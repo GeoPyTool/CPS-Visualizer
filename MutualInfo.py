@@ -302,6 +302,51 @@ def visual_diff(df_A=pd.DataFrame,df_B=pd.DataFrame):
     # plt.axis('off') 
     plt.show()
 
+def calculate_ssim_components(df_A: pd.DataFrame, df_B: pd.DataFrame, method='max_range'):
+    # 确保两个数据集的形状匹配
+    img1 = df_A.values
+    img2 = df_B.values
+
+     # 计算动态范围
+    if method == 'max_range':
+        # 计算动态范围 方法1 先计算动态范围，然后选择最大的
+        data_range_1 = img1.max() - img1.min()
+        data_range_2 = img2.max() - img2.min()
+        data_range = max(data_range_1, data_range_2)
+    else:        
+        # 计算动态范围 方法2 使用两张图像的最大值和最小值的差
+        global_max = max(img1.max(), img2.max())
+        global_min = min(img1.min(), img2.min())
+        data_range = global_max - global_min
+
+    # 计算亮度、对比度和结构分量
+    # 常数
+    C1 = (0.01 * data_range) ** 2
+    C2 = (0.03 * data_range) ** 2
+    C3 = C2 / 2
+
+    # 确保两个图像的形状匹配
+    if img1.shape != img2.shape:
+        raise ValueError("The shape of both images must be the same")
+
+    # 计算亮度分量
+    mu1 = np.mean(img1)
+    mu2 = np.mean(img2)
+    luminance = (2 * mu1 * mu2 + C1) / (mu1**2 + mu2**2 + C1)
+
+    # 计算对比度分量
+    sigma1 = np.std(img1)
+    sigma2 = np.std(img2)
+    contrast = (2 * sigma1 * sigma2 + C2) / (sigma1**2 + sigma2**2 + C2)
+
+    # 计算结构分量
+    covariance = np.mean((img1 - mu1) * (img2 - mu2))
+    structure = (covariance + C3) / (sigma1 * sigma2 + C3)
+
+    print(f"Luminance: {luminance}, Contrast: {contrast}, Structure: {structure}")
+
+    return luminance, contrast, structure
+
 
 def calculate_ssim(df_A: pd.DataFrame, df_B: pd.DataFrame):
     # 确保两个数据集的形状匹配
@@ -319,6 +364,21 @@ def calculate_ssim(df_A: pd.DataFrame, df_B: pd.DataFrame):
     print(f"SSIM: {ssim_value}")
 
     # 可视化SSIM图像
+    # 可视化
+    plt.figure(figsize=(10, 3))
+
+    # 原始图像
+    plt.subplot(1, 3, 1)
+    plt.title('Data A (RAW)')
+    plt.imshow(data_A, aspect='auto', cmap='gray')
+    plt.colorbar()
+
+    plt.subplot(1, 3, 2)
+    plt.title('Data B (RAW)')
+    plt.imshow(data_B, aspect='auto', cmap='gray')
+    plt.colorbar()
+    
+    plt.subplot(1, 3, 3)
     plt.imshow(ssim_img, aspect='auto', cmap='gray')
     plt.title(f'SSIM Image: {ssim_value}')
     plt.colorbar()
@@ -332,4 +392,6 @@ mutual_info(df_A,df_B)
 # mutual_info_regression_flattern(df_A,df_B)
 # visual_diff(df_A,df_B)
 
-ssim_score = calculate_ssim(df_A, df_B)
+
+calculate_ssim_components(df_A, df_B)
+# calculate_ssim(df_A, df_B)
