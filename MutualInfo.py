@@ -13,11 +13,18 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from scipy.ndimage import sobel
 from skimage import feature
+from skimage.metrics import structural_similarity as ssim
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from skimage.filters import threshold_otsu, threshold_local
 from skimage import exposure
+
+plt.rcParams['font.family'] = 'serif'
+plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
+plt.rcParams['svg.fonttype'] = 'none'
+plt.rcParams['pdf.fonttype'] =  'truetype'
+
 
 # 切换到当前目录
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -28,182 +35,301 @@ np.random.seed(0)
 # data_B = np.random.uniform(low=-1.0, high=1.0, size=(150, 50))  # 均匀分布
 
 # 当前目录下的一个Result目录下有Cu65_mat.csv和Zn66_mat.csv两个文件，用pandas读取数据，来替代data_A和data_B
-data_A = pd.read_csv('Result/Cu65_mat.csv').values
-data_B = pd.read_csv('Result/Zn66_mat.csv').values
+df_A = pd.read_csv('Result/Cu65_mat.csv')
+df_B = pd.read_csv('Result/Zn66_mat.csv')
 
-# 计算互信息
-mutual_info_score_list = []
-mutual_info_regression_list = []
+def mutual_info(df_A=pd.DataFrame,df_B=pd.DataFrame):
+    data_A = df_A.values
+    data_B = df_B.values
 
-# 使用mutual_info_score计算互信息（截断数据集）
-for i in range(data_A.shape[1]):
-    # 获取当前列的样本数
-    len_A = len(data_A[:, i])
-    len_B = len(data_B[:, i])
-    
+    # 计算平均互信息
+    average_mutual_info_s = mutual_info_score_unflattern(df_A,df_B)
+    average_mutual_info_r = mutual_info_regression_unflattern(df_A,df_B)
+
+    mutual_info_s_flattern = mutual_info_score_flattern(df_A,df_B)
+    mutual_info_r_flattern = mutual_info_regression_flattern(df_A,df_B)
+
+    # 线性加权平均
+    weight_s_linear = data_A.shape[0] / (data_A.shape[0] + data_B.shape[0])
+    weight_r_linear = data_B.shape[0] / (data_A.shape[0] + data_B.shape[0])
+    average_mutual_info_linear = weight_s_linear * average_mutual_info_s + weight_r_linear * average_mutual_info_r
+
+    # 对数加权平均
+    log_weight_s = np.log(data_A.shape[0])
+    log_weight_r = np.log(data_B.shape[0])
+    total_log_weight = log_weight_s + log_weight_r
+    normalized_log_weight_s = log_weight_s / total_log_weight
+    normalized_log_weight_r = log_weight_r / total_log_weight
+    average_mutual_info_log = normalized_log_weight_s * average_mutual_info_s + normalized_log_weight_r * average_mutual_info_r
+
+    # 指数加权平均
+    exp_weight_s = np.exp(data_A.shape[0])
+    exp_weight_r = np.exp(data_B.shape[0])
+    total_exp_weight = exp_weight_s + exp_weight_r
+    normalized_exp_weight_s = exp_weight_s / total_exp_weight
+    normalized_exp_weight_r = exp_weight_r / total_exp_weight
+    average_mutual_info_exp = normalized_exp_weight_s * average_mutual_info_s + normalized_exp_weight_r * average_mutual_info_r
+
+    # 归一化权重
+    total_samples = data_A.shape[0] + data_B.shape[0]
+    normalized_weight_s = data_A.shape[0] / total_samples
+    normalized_weight_r = data_B.shape[0] / total_samples
+    average_mutual_info_normalized = normalized_weight_s * average_mutual_info_s + normalized_weight_r * average_mutual_info_r
+
+    print(f"Average Mutual Information (mutual_info_score): {average_mutual_info_s}")
+    print(f"Average Mutual Information (mutual_info_regression): {average_mutual_info_r}")
+    print(f"Linear Weighted Average Mutual Information: {average_mutual_info_linear}")
+    print(f"Log Weighted Average Mutual Information: {average_mutual_info_log}")
+    print(f"Exp Weighted Average Mutual Information: {average_mutual_info_exp}")
+    print(f"Normalized Weighted Average Mutual Information: {average_mutual_info_normalized}")
+    print(f"Mutual Information Score (Flattened): {mutual_info_s_flattern}")
+    print(f"Mutual Information Regression (Flattened): {mutual_info_r_flattern}")
+          
+
+def mutual_info_score_unflattern(df_A=pd.DataFrame,df_B=pd.DataFrame):
+    data_A = df_A.values
+    data_B = df_B.values
+    # 计算互信息
+    mutual_info_score_list = []
+
+    # 获取两个数据集的列数
+    num_columns_A = data_A.shape[1]
+    num_columns_B = data_B.shape[1]
+
+    # 取列数的最小值作为循环的范围
+    min_columns = min(num_columns_A, num_columns_B)
+
+    # 使用最小列数作为循环范围
+    for i in range(min_columns):
+        # 获取当前列的样本数
+        len_A = len(data_A[:, i])
+        len_B = len(data_B[:, i])
+        
+        # 取较小的样本数
+        min_len = min(len_A, len_B)
+        
+        # 截断数据
+        truncated_A = data_A[:min_len, i]
+        truncated_B = data_B[:min_len, i]
+        
+        # 计算互信息分数
+        mi_s = mutual_info_score(truncated_A, truncated_B)
+        
+        # 将结果添加到列表中
+        mutual_info_score_list.append(mi_s)
+    average_mutual_info_s = np.mean(mutual_info_score_list)
+    print(f"Mutual Information Score Average: {average_mutual_info_s}")
+    return(average_mutual_info_s)
+
+def mutual_info_score_flattern(df_A=pd.DataFrame,df_B=pd.DataFrame):    
+    data_A = df_A.values
+    data_B = df_B.values
+    # 获取两个数据集的样本数    
+    len_A = data_A.shape[0]
+    len_B = data_B.shape[0]
     # 取较小的样本数
     min_len = min(len_A, len_B)
-    
     # 截断数据
-    truncated_A = data_A[:min_len, i]
-    truncated_B = data_B[:min_len, i]
-    
+    truncated_A = data_A[:min_len, :].flatten()
+    truncated_B = data_B[:min_len, :].flatten()
     # 计算互信息分数
     mi_s = mutual_info_score(truncated_A, truncated_B)
+    print(f"Mutual Information Score (Flattened): {mi_s}")
+    return(mi_s)
+
+def mutual_info_regression_unflattern(df_A=pd.DataFrame,df_B=pd.DataFrame):
+    data_A = df_A.values
+    data_B = df_B.values
+    # 计算互信息
+    mutual_info_regression_list = []
+
+    # 获取两个数据集的列数
+    num_columns_A = data_A.shape[1]
+    num_columns_B = data_B.shape[1]
+
+    # 取列数的最小值作为循环的范围
+    min_columns = min(num_columns_A, num_columns_B)
+
+    # 判断哪个数据集的样本数更多
+    if data_A.shape[0] > data_B.shape[0]:
+        # 如果data_A的样本数更多，重复data_B
+        data_B_repeated = np.tile(data_B, (int(np.ceil(data_A.shape[0] / data_B.shape[0])), 1))[:data_A.shape[0], :]
+        data_A_repeated = data_A
+    else:
+        # 如果data_B的样本数更多，重复data_A
+        data_A_repeated = np.tile(data_A, (int(np.ceil(data_B.shape[0] / data_A.shape[0])), 1))[:data_B.shape[0], :]
+        data_B_repeated = data_B
+
     
-    # 将结果添加到列表中
-    mutual_info_score_list.append(mi_s)
+    # 使用最小列数作为循环范围
+    for i in range(min_columns):
+        mi_r = mutual_info_regression(data_A_repeated[:, i].reshape(-1, 1), data_B_repeated[:, i])
+        mutual_info_regression_list.append(mi_r[0])    
 
-# 判断哪个数据集的样本数更多
-if data_A.shape[0] > data_B.shape[0]:
-    # 如果data_A的样本数更多，重复data_B
-    data_B_repeated = np.tile(data_B, (int(np.ceil(data_A.shape[0] / data_B.shape[0])), 1))[:data_A.shape[0], :]
-    data_A_repeated = data_A
-else:
-    # 如果data_B的样本数更多，重复data_A
-    data_A_repeated = np.tile(data_A, (int(np.ceil(data_B.shape[0] / data_A.shape[0])), 1))[:data_B.shape[0], :]
-    data_B_repeated = data_B
+    # 计算平均互信息
+    average_mutual_info_r = np.mean(mutual_info_regression_list)
+    print(f"Mutual Information Regression Average: {average_mutual_info_r}")
+    return(average_mutual_info_r)
 
-for i in range(data_A.shape[1]):
-    mi_r = mutual_info_regression(data_A_repeated[:, i].reshape(-1, 1), data_B_repeated[:, i])
-    mutual_info_regression_list.append(mi_r[0])
+def mutual_info_regression_flattern(df_A=pd.DataFrame,df_B=pd.DataFrame):    
+    data_A = df_A.values
+    data_B = df_B.values
+    # 获取两个数据集的样本数    
+    len_A = data_A.shape[0]
+    len_B = data_B.shape[0]
+    # 取较小的样本数
+    min_len = min(len_A, len_B)
 
-# 计算平均互信息
-average_mutual_info_s = np.mean(mutual_info_score_list)
-average_mutual_info_r = np.mean(mutual_info_regression_list)
-
-# 线性加权平均
-weight_s_linear = data_A.shape[0] / (data_A.shape[0] + data_B.shape[0])
-weight_r_linear = data_B.shape[0] / (data_A.shape[0] + data_B.shape[0])
-average_mutual_info_linear = weight_s_linear * average_mutual_info_s + weight_r_linear * average_mutual_info_r
-
-# 对数加权平均
-log_weight_s = np.log(data_A.shape[0])
-log_weight_r = np.log(data_B.shape[0])
-total_log_weight = log_weight_s + log_weight_r
-normalized_log_weight_s = log_weight_s / total_log_weight
-normalized_log_weight_r = log_weight_r / total_log_weight
-average_mutual_info_log = normalized_log_weight_s * average_mutual_info_s + normalized_log_weight_r * average_mutual_info_r
-
-# 指数加权平均
-exp_weight_s = np.exp(data_A.shape[0])
-exp_weight_r = np.exp(data_B.shape[0])
-total_exp_weight = exp_weight_s + exp_weight_r
-normalized_exp_weight_s = exp_weight_s / total_exp_weight
-normalized_exp_weight_r = exp_weight_r / total_exp_weight
-average_mutual_info_exp = normalized_exp_weight_s * average_mutual_info_s + normalized_exp_weight_r * average_mutual_info_r
-
-# 归一化权重
-total_samples = data_A.shape[0] + data_B.shape[0]
-normalized_weight_s = data_A.shape[0] / total_samples
-normalized_weight_r = data_B.shape[0] / total_samples
-average_mutual_info_normalized = normalized_weight_s * average_mutual_info_s + normalized_weight_r * average_mutual_info_r
-
-print(f"Average Mutual Information (mutual_info_score): {average_mutual_info_s}")
-print(f"Average Mutual Information (mutual_info_regression): {average_mutual_info_r}")
-print(f"Linear Weighted Average Mutual Information: {average_mutual_info_linear}")
-print(f"Log Weighted Average Mutual Information: {average_mutual_info_log}")
-print(f"Exp Weighted Average Mutual Information: {average_mutual_info_exp}")
-print(f"Normalized Weighted Average Mutual Information: {average_mutual_info_normalized}")
-
-# 可视化，这部分做一下改进，这里的A和B都可以作为二维图像来呈现，就做一个单独A、单独B、AB对比这三个情况的吧？
+    # 判断哪个数据集的样本数更多
+    if data_A.shape[0] > data_B.shape[0]:
+        # 如果data_A的样本数更多，重复data_B
+        data_B_repeated = np.tile(data_B, (int(np.ceil(data_A.shape[0] / data_B.shape[0])), 1))[:data_A.shape[0], :]
+        data_A_repeated = data_A
+    else:
+        # 如果data_B的样本数更多，重复data_A
+        data_A_repeated = np.tile(data_A, (int(np.ceil(data_B.shape[0] / data_A.shape[0])), 1))[:data_B.shape[0], :]
+        data_B_repeated = data_B
 
 
-# 假设 data_A 和 data_B 是二维数组
-# 对 data_A 和 data_B 进行对数变换
-data_A_log = np.log1p(data_A)
-data_B_log = np.log1p(data_B)
+    # 将数据展平为一维数组
+    flattened_A = data_A_repeated.flatten()
+    flattened_B = data_B_repeated.flatten()
 
-# 标准化变换
-scaler = StandardScaler()
-data_A_log_norm = scaler.fit_transform(data_A_log)
-data_B_log_norm = scaler.fit_transform(data_B_log)
+    # 计算互信息分数
+    mi_r = mutual_info_regression(flattened_A.reshape(-1, 1), flattened_B)
+    print(f"Mutual Information Regression (Flattened): {mi_r[0]}")
+    return(mi_r[0])
 
-# 计算标准化差值
-diff_norm = (data_A_log_norm - data_B_log_norm) / (np.abs(data_A_log_norm) + np.abs(data_B_log_norm) + 1e-10)
+def log_transform(data):
+    return np.log1p(data)
 
-# 使用自适应阈值进行二值化
-block_size = 13  # 可以根据图像大小调整
-binary_A_adaptive = data_A_log > threshold_local(data_A_log, block_size, offset=10)
-binary_B_adaptive = data_B_log > threshold_local(data_B_log, block_size, offset=10)
-binary_diff_adaptive = diff_norm > threshold_local(diff_norm, block_size, offset=10)
+def log_centering_transform(data):
+    # 对数据进行对数变换
+    log_data = np.log1p(data)  # 使用log1p避免log(0)的问题
 
-# 对数变换后的图像进行直方图均衡化
-data_A_log_eq = exposure.equalize_hist(data_A_log)
-data_B_log_eq = exposure.equalize_hist(data_B_log)
-diff_norm_eq = exposure.equalize_hist(diff_norm)
+    # 对变换后的数据进行中心化处理
+    centered_log_data = log_data - np.mean(log_data, axis=0)
 
-# 使用自适应阈值进行二值化
-binary_A_eq = data_A_log_eq > threshold_local(data_A_log_eq, block_size, offset=10)
-binary_B_eq = data_B_log_eq > threshold_local(data_B_log_eq, block_size, offset=10)
-binary_diff_eq = diff_norm_eq > threshold_local(diff_norm_eq, block_size, offset=10)
+    return centered_log_data
 
-# 可视化
-plt.figure(figsize=(20, 20))
+def z_score_normalization(data):
+    return (data - np.mean(data, axis=0)) / np.std(data, axis=0)
 
-# 原始图像
-plt.subplot(4, 3, 1)
-plt.title('Data A (Log Transformed)')
-plt.imshow(data_A_log, aspect='auto', cmap='gray')
-plt.colorbar()
+def standardize(data):
+    scaler = StandardScaler()
+    return scaler.fit_transform(data)
 
-plt.subplot(4, 3, 2)
-plt.title('Data B (Log Transformed)')
-plt.imshow(data_B_log, aspect='auto', cmap='gray')
-plt.colorbar()
+def min_max_scaled_normalization(data):
+    min_max_scaled = (data - np.min(data)) / (np.max(data) - np.min(data))
+    return min_max_scaled
 
-plt.subplot(4, 3, 3)
-plt.title('Normalized Difference (Log Transformed)')
-plt.imshow(diff_norm, aspect='auto', cmap='gray')
-plt.colorbar()
+def equalize_hist(data):
+    return exposure.equalize_hist(data)
 
-# 标准化变换
-plt.subplot(4, 3, 4)
-plt.title('Data A (Standardized)')
-plt.imshow(data_A_log_norm, aspect='auto', cmap='gray')
-plt.colorbar()
+def visual_diff(df_A=pd.DataFrame,df_B=pd.DataFrame):
+    # 可视化，这部分做一下改进，这里的A和B都可以作为二维图像来呈现，就做一个单独A、单独B、AB对比这三个情况的吧？
+    data_A = df_A.values
+    data_B = df_B.values
+    
+    # 对 data_A 和 data_B 进行对数变换
+    data_A_log = np.log1p(data_A)
+    data_B_log = np.log1p(data_B)    
+    # 计算标准化差值
+    diff_norm_log = (data_A_log- data_B_log) / (np.abs(data_A_log) + np.abs(data_B_log) + 1e-10)
 
-plt.subplot(4, 3, 5)
-plt.title('Data B (Standardized)')
-plt.imshow(data_B_log_norm, aspect='auto', cmap='gray')
-plt.colorbar()
+    # 对数中心化变换
+    data_A_log_centered = log_centering_transform(data_A)
+    data_B_log_centered = log_centering_transform(data_B)
+    diff_norm_log_centered = (data_A_log_centered- data_B_log_centered) / (np.abs(data_A_log_centered) + np.abs(data_B_log_centered) + 1e-10)
 
-plt.subplot(4, 3, 6)
-plt.title('Normalized Difference (Standardized)')
-plt.imshow(diff_norm, aspect='auto', cmap='gray')
-plt.colorbar()
+    # 对数变换后的图像进行直方图均衡化
+    data_A_log_eq = exposure.equalize_hist(data_A_log)
+    data_B_log_eq = exposure.equalize_hist(data_B_log)
+    diff_norm_eq = exposure.equalize_hist(diff_norm_log)
 
-# 自适应阈值二值化
-plt.subplot(4, 3, 7)
-plt.title('Data A (Adaptive Threshold)')
-plt.imshow(binary_A_adaptive, aspect='auto', cmap='gray')
-plt.colorbar()
+    # 可视化
+    plt.figure(figsize=(10, 10))
 
-plt.subplot(4, 3, 8)
-plt.title('Data B (Adaptive Threshold)')
-plt.imshow(binary_B_adaptive, aspect='auto', cmap='gray')
-plt.colorbar()
+    # 原始图像
+    plt.subplot(3, 3, 1)
+    plt.title('Data A (Log Transformed)')
+    plt.imshow(data_A_log, aspect='auto', cmap='gray')
+    plt.colorbar()
 
-plt.subplot(4, 3, 9)
-plt.title('Normalized Difference (Adaptive Threshold)')
-plt.imshow(binary_diff_adaptive, aspect='auto', cmap='gray')
-plt.colorbar()
+    plt.subplot(3, 3, 2)
+    plt.title('Data B (Log Transformed)')
+    plt.imshow(data_B_log, aspect='auto', cmap='gray')
+    plt.colorbar()
 
-# 直方图均衡化
-plt.subplot(4, 3, 10)
-plt.title('Data A (Equalized)')
-plt.imshow(data_A_log_eq, aspect='auto', cmap='gray')
-plt.colorbar()
+    plt.subplot(3, 3, 3)
+    plt.title('Normalized Difference (Log Transformed)')
+    plt.imshow(diff_norm_log, aspect='auto', cmap='gray')
+    plt.colorbar()
 
-plt.subplot(4, 3, 11)
-plt.title('Data B (Equalized)')
-plt.imshow(data_B_log_eq, aspect='auto', cmap='gray')
-plt.colorbar()
+    # 标准化变换
+    plt.subplot(3, 3, 4)
+    plt.title('Data A (Log Centered)')
+    plt.imshow(data_A_log_centered, aspect='auto', cmap='gray')
+    plt.colorbar()
 
-plt.subplot(4, 3, 12)
-plt.title('Normalized Difference (Equalized)')
-plt.imshow(diff_norm_eq, aspect='auto', cmap='gray')
-plt.colorbar()
+    plt.subplot(3, 3, 5)
+    plt.title('Data B (Log Centered)')
+    plt.imshow(data_B_log_centered, aspect='auto', cmap='gray')
+    plt.colorbar()
 
-plt.tight_layout()
-plt.show()
+    plt.subplot(3, 3, 6)
+    plt.title('Normalized Difference (Log Centered)')
+    plt.imshow(diff_norm_log_centered, aspect='auto', cmap='gray')
+    plt.colorbar()
+
+    # 直方图均衡化
+    plt.subplot(3, 3, 7)
+    plt.title('Data A (Equalized)')
+    plt.imshow(data_A_log_eq, aspect='auto', cmap='gray')
+    plt.colorbar()
+
+    plt.subplot(3, 3, 8)
+    plt.title('Data B (Equalized)')
+    plt.imshow(data_B_log_eq, aspect='auto', cmap='gray')
+    plt.colorbar()
+
+    plt.subplot(3, 3, 9)
+    plt.title('Normalized Difference (Equalized)')
+    plt.imshow(diff_norm_eq, aspect='auto', cmap='gray')
+    plt.colorbar()
+
+    plt.tight_layout()
+    # plt.axis('off') 
+    plt.show()
+
+
+def calculate_ssim(df_A: pd.DataFrame, df_B: pd.DataFrame):
+    # 确保两个数据集的形状匹配
+    if df_A.shape != df_B.shape:
+        raise ValueError("The shape of both dataframes must be the same")
+    # 处理缺失值（例如，使用0值填充）
+    df_A = df_A.fillna(0)
+    df_B = df_B.fillna(0)
+    # 将数据转换为numpy数组
+    data_A = df_A.values
+    data_B = df_B.values
+    # 计算SSIM
+    data_range = data_B.max() - data_B.min()
+    ssim_value, ssim_img = ssim(data_A, data_B, full=True, data_range=data_range)
+    print(f"SSIM: {ssim_value}")
+
+    # 可视化SSIM图像
+    plt.imshow(ssim_img, aspect='auto', cmap='gray')
+    plt.title(f'SSIM Image: {ssim_value}')
+    plt.colorbar()
+    plt.show()
+    return ssim_value, ssim_img
+
+mutual_info(df_A,df_B)
+# mutual_info_score_unflattern(df_A,df_B)
+# mutual_info_score_flattern(df_A,df_B)
+# mutual_info_regression_unflattern(df_A,df_B)
+# mutual_info_regression_flattern(df_A,df_B)
+# visual_diff(df_A,df_B)
+
+ssim_score = calculate_ssim(df_A, df_B)
