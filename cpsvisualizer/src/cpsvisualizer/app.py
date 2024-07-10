@@ -426,6 +426,7 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         self.dpi = 50
         self.df = pd.DataFrame()    
         self.df_list=[]
+        self.df_name_list = []
     def init_ui(self):
         self.setWindowTitle('CPS-Visualizer: Calculation and visualization of CPS (counts per second) for ICPMS scan data.')
         self.resize(1024, 600)  # 设置窗口尺寸为1024*600
@@ -486,6 +487,8 @@ class CPSVisualizer(QtWidgets.QMainWindow):
     def open_files(self):
         self.df_list = []  # 初始化一个空列表来存储每个文件的 DataFrame
 
+        self.df_name_list = []
+
         global working_directory 
         file_names, _ = QFileDialog.getOpenFileNames(self, 'Open Files', '', 'CSV Files (*.csv);;Excel Files (*.xls *.xlsx)')
         if file_names:
@@ -495,15 +498,44 @@ class CPSVisualizer(QtWidgets.QMainWindow):
                 elif file_name.endswith('.xls') or file_name.endswith('.xlsx'):
                     df = pd.read_excel(file_name)
                 self.df_list.append(df)  # 将每个 DataFrame 添加到列表中
+                
+                self.df_name_list.append(file_name)
 
 
-        for i in self.df_list:
-            pass
-            data_A = i.values
+
         print(self.df_list)
+        print(self.df_name_list)
         # model = PandasModel(self.df)
         # self.table.setModel(model) 
 
+        new_df = self.apply_function_to_df_pairs()
+        model = PandasModel(new_df)
+        self.table.setModel(model)
+
+
+
+    def apply_function_to_df_pairs(self):
+        n = len(self.df_list)
+        result = [[None for _ in range(n)] for _ in range(n)]
+        
+        for i, df1 in enumerate(self.df_list):
+            for j, df2 in enumerate(self.df_list):
+                result[i][j] = self.fun(df1, df2)
+        
+        labels = [df.name if hasattr(df, 'name') else f'DF_{i}' for i, df in enumerate(self.df_name_list)]
+        result_df = pd.DataFrame(result, index=labels, columns=labels)
+        return result_df
+
+    # Example usage:
+    # 2024年7月10日进度
+    # Assuming `fun` is a function that takes two DataFrames and returns a value
+    def fun(self, df1, df2):
+        # Example function: return the sum of the shapes of the two DataFrames
+        return df1.shape[0] + df2.shape[0]
+
+        # Apply the function to the DataFrame pairs
+        result = self.apply_function_to_df_pairs(fun)
+        print(result)
     def clear_data(self):
         # 清空数据
         self.df = pd.DataFrame()

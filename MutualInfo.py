@@ -85,7 +85,6 @@ def mutual_info(df_A=pd.DataFrame,df_B=pd.DataFrame):
     print(f"Mutual Information Score (Flattened): {mutual_info_s_flattern}")
     print(f"Mutual Information Regression (Flattened): {mutual_info_r_flattern}")
           
-
 def mutual_info_score_unflattern(df_A=pd.DataFrame,df_B=pd.DataFrame):
     data_A = df_A.values
     data_B = df_B.values
