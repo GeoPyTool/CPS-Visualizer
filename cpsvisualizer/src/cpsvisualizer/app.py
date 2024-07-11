@@ -498,12 +498,11 @@ class CPSVisualizer(QtWidgets.QMainWindow):
                 elif file_name.endswith('.xls') or file_name.endswith('.xlsx'):
                     df = pd.read_excel(file_name)
                 self.df_list.append(df)  # 将每个 DataFrame 添加到列表中
-                
-                self.df_name_list.append(file_name)
+                tmp_name = os.path.basename(file_name)
+                cleaned_name = self.clean_tmp_name(tmp_name)
+                self.df_name_list.append(cleaned_name)
 
-
-
-        print(self.df_list)
+        # print(self.df_list)
         print(self.df_name_list)
         # model = PandasModel(self.df)
         # self.table.setModel(model) 
@@ -512,7 +511,12 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         model = PandasModel(new_df)
         self.table.setModel(model)
 
-
+    def clean_tmp_name(self,tmp_name):
+        # Remove the extension
+        name_without_ext = os.path.splitext(tmp_name)[0]
+        # Remove everything after the first underscore
+        cleaned_name = name_without_ext.split('_')[0]
+        return cleaned_name
 
     def apply_function_to_df_pairs(self):
         n = len(self.df_list)
@@ -522,7 +526,7 @@ class CPSVisualizer(QtWidgets.QMainWindow):
             for j, df2 in enumerate(self.df_list):
                 result[i][j] = self.fun(df1, df2)
         
-        labels = [df.name if hasattr(df, 'name') else f'DF_{i}' for i, df in enumerate(self.df_name_list)]
+        labels = self.df_name_list
         result_df = pd.DataFrame(result, index=labels, columns=labels)
         return result_df
 
