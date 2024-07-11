@@ -36,6 +36,8 @@ from PySide6.QtWidgets import QComboBox,QAbstractItemView, QHBoxLayout, QLabel, 
 from PySide6.QtWidgets import QListWidget, QListWidgetItem, QLabel
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, QVariantAnimation, Qt
 
+from PySide6.QtWidgets import QComboBox, QListWidget, QListWidgetItem, QCheckBox, QStyledItemDelegate, QVBoxLayout, QWidget, QApplication
+from PySide6.QtCore import Qt, Signal
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import pandas as pd
@@ -308,12 +310,12 @@ def mutual_info(df_A=pd.DataFrame,df_B=pd.DataFrame):
     normalized_weight_r = data_B.shape[0] / total_samples
     average_mutual_info_normalized = normalized_weight_s * average_mutual_info_s + normalized_weight_r * average_mutual_info_r
 
-    print(f"Average Mutual Information (mutual_info_score): {average_mutual_info_s}")
-    print(f"Average Mutual Information (mutual_info_regression): {average_mutual_info_r}")
-    print(f"Linear Weighted Average Mutual Information: {average_mutual_info_linear}")
-    print(f"Log Weighted Average Mutual Information: {average_mutual_info_log}")
-    print(f"Exp Weighted Average Mutual Information: {average_mutual_info_exp}")
-    print(f"Normalized Weighted Average Mutual Information: {average_mutual_info_normalized}")
+    # print(f"Average Mutual Information (mutual_info_score): {average_mutual_info_s}")
+    # print(f"Average Mutual Information (mutual_info_regression): {average_mutual_info_r}")
+    # print(f"Linear Weighted Average Mutual Information: {average_mutual_info_linear}")
+    # print(f"Log Weighted Average Mutual Information: {average_mutual_info_log}")
+    # print(f"Exp Weighted Average Mutual Information: {average_mutual_info_exp}")
+    # print(f"Normalized Weighted Average Mutual Information: {average_mutual_info_normalized}")
 
 def log_transform(data):
     return np.log1p(data)
@@ -413,8 +415,6 @@ def visual_diff(df_A=pd.DataFrame,df_B=pd.DataFrame):
     # plt.axis('off') 
     plt.show()
 
-from PySide6.QtWidgets import QComboBox, QListWidget, QListWidgetItem, QCheckBox, QStyledItemDelegate, QVBoxLayout, QWidget, QApplication
-from PySide6.QtCore import Qt, Signal
 
 class CheckBoxDelegate(QStyledItemDelegate):
     def createEditor(self, parent, option, index):
@@ -471,6 +471,16 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         self.df_list=[]
         self.df_name_list = []
         self.function_list = ["log_transform","centering_transform","z_score_normalization","standardize","equalize_hist"]
+        self.distance_list = ["Euclidean", "Manhattan", "Chebyshev", 'Minkowski', 
+                 'Cosine', 'Correlation', 'Jaccard', 'Dice', 
+                 'Kulsinski', 'Rogers-Tanimoto', 'Russell-Rao', 
+                 'Sokal-Michener', 'Sokal-Sneath', 'Yule',
+                 'Hsim_Distance','Close_Distance',
+                 'mutual_info_score_unflattern',
+                 'mutual_info_score_flattern',
+                 'mutual_info_regression_unflattern',
+                 'mutual_info_regression_flattern',
+                 'calculate_ssim', 'luminance', 'contrast', 'structure',]
 
     def init_ui(self):
         self.setWindowTitle('CPS-Visualizer: Calculation and visualization of CPS (counts per second) for ICPMS scan data.')
@@ -530,6 +540,13 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         self.function_selector.setSelectionMode(QListWidget.MultiSelection)  # 设置为多选模式
         self.function_selector.itemSelectionChanged.connect(self.plot_data)  # 连接到 plot_data 方法
 
+        # 选择距离衡量方法
+        self.Compare_label = QLabel('Select Compare Metric')
+        self.Compare_selector = QComboBox(self)
+        self.Compare_selector.addItems(self.distance_list)
+        # self.Compare_selector.setSelectionMode(QListWidget.MultiSelection)
+        self.Compare_selector.currentTextChanged.connect(self.apply_function_to_df_pairs)
+
 
         self.toolbar.addWidget(spacer) # Add a separator before the first switch
         # 创建一个表格视图
@@ -546,14 +563,18 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         # 创建一个水平布局并添加表格视图和画布
         base_layout = QHBoxLayout()
         self.left_layout = QHBoxLayout()
-        self.left_layout_sub = QVBoxLayout()
+        self.left_layout_left = QVBoxLayout()
+        self.left_layout_right = QVBoxLayout()
         self.right_layout = QVBoxLayout()
-        self.left_layout_sub.addWidget(self.data_label)
-        self.left_layout_sub.addWidget(self.data_selector)
-        self.left_layout_sub.addWidget(self.function_label)
-        self.left_layout_sub.addWidget(self.function_selector)
-        self.left_layout.addWidget(self.table,10)        
-        self.left_layout.addLayout(self.left_layout_sub,1)
+        self.left_layout_right.addWidget(self.data_label)
+        self.left_layout_right.addWidget(self.data_selector)
+        self.left_layout_right.addWidget(self.function_label)
+        self.left_layout_right.addWidget(self.function_selector)
+        self.left_layout_left.addWidget(self.Compare_label) 
+        self.left_layout_left.addWidget(self.Compare_selector) 
+        self.left_layout_left.addWidget(self.table,10) 
+        self.left_layout.addLayout(self.left_layout_left,10)     
+        self.left_layout.addLayout(self.left_layout_right,1)
         self.right_layout.addWidget(self.canvas)
         base_layout.addLayout(self.left_layout,4)
         base_layout.addLayout(self.right_layout,6)
@@ -582,14 +603,12 @@ class CPSVisualizer(QtWidgets.QMainWindow):
                 self.df_name_list.append(cleaned_name)
 
         # print(self.df_list)
-        print(self.df_name_list)
+        # print(self.df_name_list)
         self.data_selector.addItems(self.df_name_list)
         # model = PandasModel(self.df)
         # self.table.setModel(model) 
 
-        self.df = self.apply_function_to_df_pairs()
-        model = PandasModel(self.df)
-        self.table.setModel(model)
+        self.apply_function_to_df_pairs()
 
     def clean_tmp_name(self,tmp_name):
         # Remove the extension
@@ -598,17 +617,586 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         cleaned_name = name_without_ext.split('_')[0]
         return cleaned_name
 
+
+
+    def mutual_info_score_unflattern(self,df_A=pd.DataFrame,df_B=pd.DataFrame):
+        data_A = df_A.values
+        data_B = df_B.values
+        # 计算互信息
+        mutual_info_score_list = []
+
+        # 获取两个数据集的列数
+        num_columns_A = data_A.shape[1]
+        num_columns_B = data_B.shape[1]
+
+        # 取列数的最小值作为循环的范围
+        min_columns = min(num_columns_A, num_columns_B)
+
+        # 使用最小列数作为循环范围
+        for i in range(min_columns):
+            # 获取当前列的样本数
+            len_A = len(data_A[:, i])
+            len_B = len(data_B[:, i])
+            
+            # 取较小的样本数
+            min_len = min(len_A, len_B)
+            
+            # 截断数据
+            truncated_A = data_A[:min_len, i]
+            truncated_B = data_B[:min_len, i]
+            
+            # 计算互信息分数
+            mi_s = mutual_info_score(truncated_A, truncated_B)
+            
+            # 将结果添加到列表中
+            mutual_info_score_list.append(mi_s)
+        average_mutual_info_s = np.mean(mutual_info_score_list)
+        # print(f"Mutual Information Score Average: {average_mutual_info_s}")
+        return(average_mutual_info_s)
+
+    def mutual_info_score_flattern(self,df_A=pd.DataFrame,df_B=pd.DataFrame):    
+        data_A = df_A.values
+        data_B = df_B.values
+        # 获取两个数据集的样本数    
+        len_A = data_A.shape[0]
+        len_B = data_B.shape[0]
+        # 取较小的样本数
+        min_len = min(len_A, len_B)
+        # 截断数据
+        truncated_A = data_A[:min_len, :].flatten()
+        truncated_B = data_B[:min_len, :].flatten()
+        # 计算互信息分数
+        mi_s = mutual_info_score(truncated_A, truncated_B)
+        # print(f"Mutual Information Score (Flattened): {mi_s}")
+        return(mi_s)
+
+    def mutual_info_regression_unflattern(self,df_A=pd.DataFrame,df_B=pd.DataFrame):
+        data_A = df_A.values
+        data_B = df_B.values
+        # 计算互信息
+        mutual_info_regression_list = []
+
+        # 获取两个数据集的列数
+        num_columns_A = data_A.shape[1]
+        num_columns_B = data_B.shape[1]
+
+        # 取列数的最小值作为循环的范围
+        min_columns = min(num_columns_A, num_columns_B)
+
+        # 判断哪个数据集的样本数更多
+        if data_A.shape[0] > data_B.shape[0]:
+            # 如果data_A的样本数更多，重复data_B
+            data_B_repeated = np.tile(data_B, (int(np.ceil(data_A.shape[0] / data_B.shape[0])), 1))[:data_A.shape[0], :]
+            data_A_repeated = data_A
+        else:
+            # 如果data_B的样本数更多，重复data_A
+            data_A_repeated = np.tile(data_A, (int(np.ceil(data_B.shape[0] / data_A.shape[0])), 1))[:data_B.shape[0], :]
+            data_B_repeated = data_B
+
+        
+        # 使用最小列数作为循环范围
+        for i in range(min_columns):
+            mi_r = mutual_info_regression(data_A_repeated[:, i].reshape(-1, 1), data_B_repeated[:, i])
+            mutual_info_regression_list.append(mi_r[0])    
+
+        # 计算平均互信息
+        average_mutual_info_r = np.mean(mutual_info_regression_list)
+        # print(f"Mutual Information Regression Average: {average_mutual_info_r}")
+        return(average_mutual_info_r)
+
+    def mutual_info_regression_flattern(self,df_A=pd.DataFrame,df_B=pd.DataFrame):    
+        data_A = df_A.values
+        data_B = df_B.values
+        # 获取两个数据集的样本数    
+        len_A = data_A.shape[0]
+        len_B = data_B.shape[0]
+        # 取较小的样本数
+        min_len = min(len_A, len_B)
+
+        # 判断哪个数据集的样本数更多
+        if data_A.shape[0] > data_B.shape[0]:
+            # 如果data_A的样本数更多，重复data_B
+            data_B_repeated = np.tile(data_B, (int(np.ceil(data_A.shape[0] / data_B.shape[0])), 1))[:data_A.shape[0], :]
+            data_A_repeated = data_A
+        else:
+            # 如果data_B的样本数更多，重复data_A
+            data_A_repeated = np.tile(data_A, (int(np.ceil(data_B.shape[0] / data_A.shape[0])), 1))[:data_B.shape[0], :]
+            data_B_repeated = data_B
+
+
+        # 将数据展平为一维数组
+        flattened_A = data_A_repeated.flatten()
+        flattened_B = data_B_repeated.flatten()
+
+        # 计算互信息分数
+        mi_r = mutual_info_regression(flattened_A.reshape(-1, 1), flattened_B)
+        # print(f"Mutual Information Regression (Flattened): {mi_r[0]}")
+        return(mi_r[0])
+
+    def calculate_ssim(self,df_A: pd.DataFrame, df_B: pd.DataFrame):
+        # 确保两个数据集的形状匹配
+        if df_A.shape != df_B.shape:
+            raise ValueError("The shape of both dataframes must be the same")
+        # 处理缺失值（例如，使用0值填充）
+        df_A = df_A.fillna(0)
+        df_B = df_B.fillna(0)
+        # 将数据转换为numpy数组
+        data_A = df_A.values
+        data_B = df_B.values
+        # 计算SSIM
+        data_range = data_B.max() - data_B.min()
+        ssim_value, ssim_img = ssim(data_A, data_B, full=True, data_range=data_range)
+        # print(f"SSIM: {ssim_value}")
+
+        # 可视化SSIM图像
+        # 可视化
+        plt.figure(figsize=(10, 3))
+
+        # 原始图像
+        plt.subplot(1, 3, 1)
+        plt.title('Data A (RAW)')
+        plt.imshow(data_A, aspect='auto', cmap='gray')
+        plt.colorbar()
+
+        plt.subplot(1, 3, 2)
+        plt.title('Data B (RAW)')
+        plt.imshow(data_B, aspect='auto', cmap='gray')
+        plt.colorbar()
+        
+        plt.subplot(1, 3, 3)
+        plt.imshow(ssim_img, aspect='auto', cmap='gray')
+        plt.title(f'SSIM Image: {ssim_value}')
+        plt.colorbar()
+        plt.show()
+        return ssim_value, ssim_img
+
+    def calculate_ssim_components(self,df_A: pd.DataFrame, df_B: pd.DataFrame, method='max_range'):
+        # 确保两个数据集的形状匹配
+        img1 = df_A.values
+        img2 = df_B.values
+
+        # 计算动态范围
+        if method == 'max_range':
+            # 计算动态范围 方法1 先计算动态范围，然后选择最大的
+            data_range_1 = img1.max() - img1.min()
+            data_range_2 = img2.max() - img2.min()
+            data_range = max(data_range_1, data_range_2)
+        else:        
+            # 计算动态范围 方法2 使用两张图像的最大值和最小值的差
+            global_max = max(img1.max(), img2.max())
+            global_min = min(img1.min(), img2.min())
+            data_range = global_max - global_min
+
+        # 计算亮度、对比度和结构分量
+        # 常数
+        C1 = (0.01 * data_range) ** 2
+        C2 = (0.03 * data_range) ** 2
+        C3 = C2 / 2
+
+        # 确保两个图像的形状匹配
+        if img1.shape != img2.shape:
+            raise ValueError("The shape of both images must be the same")
+
+        # 计算亮度分量
+        mu1 = np.mean(img1)
+        mu2 = np.mean(img2)
+        luminance = (2 * mu1 * mu2 + C1) / (mu1**2 + mu2**2 + C1)
+
+        # 计算对比度分量
+        sigma1 = np.std(img1)
+        sigma2 = np.std(img2)
+        contrast = (2 * sigma1 * sigma2 + C2) / (sigma1**2 + sigma2**2 + C2)
+
+        # 计算结构分量
+        covariance = np.mean((img1 - mu1) * (img2 - mu2))
+        structure = (covariance + C3) / (sigma1 * sigma2 + C3)
+
+        # print(f"Luminance: {luminance}, Contrast: {contrast}, Structure: {structure}")
+
+        return luminance, contrast, structure
+
+    def luminance(self,df_A: pd.DataFrame, df_B: pd.DataFrame, method='max_range'):
+        # 确保两个数据集的形状匹配
+        img1 = df_A.values
+        img2 = df_B.values
+
+        # 计算动态范围
+        if method == 'max_range':
+            # 计算动态范围 方法1 先计算动态范围，然后选择最大的
+            data_range_1 = img1.max() - img1.min()
+            data_range_2 = img2.max() - img2.min()
+            data_range = max(data_range_1, data_range_2)
+        else:        
+            # 计算动态范围 方法2 使用两张图像的最大值和最小值的差
+            global_max = max(img1.max(), img2.max())
+            global_min = min(img1.min(), img2.min())
+            data_range = global_max - global_min
+
+        # 计算亮度、对比度和结构分量
+        # 常数
+        C1 = (0.01 * data_range) ** 2
+        C2 = (0.03 * data_range) ** 2
+        C3 = C2 / 2
+
+        # 确保两个图像的形状匹配
+        if img1.shape != img2.shape:
+            raise ValueError("The shape of both images must be the same")
+
+        # 计算亮度分量
+        mu1 = np.mean(img1)
+        mu2 = np.mean(img2)
+        luminance = (2 * mu1 * mu2 + C1) / (mu1**2 + mu2**2 + C1)
+
+        # 计算对比度分量
+        sigma1 = np.std(img1)
+        sigma2 = np.std(img2)
+        contrast = (2 * sigma1 * sigma2 + C2) / (sigma1**2 + sigma2**2 + C2)
+
+        # 计算结构分量
+        covariance = np.mean((img1 - mu1) * (img2 - mu2))
+        structure = (covariance + C3) / (sigma1 * sigma2 + C3)
+
+        # print(f"Luminance: {luminance}, Contrast: {contrast}, Structure: {structure}")
+
+        return luminance
+
+    def contrast(self,df_A: pd.DataFrame, df_B: pd.DataFrame, method='max_range'):
+        # 确保两个数据集的形状匹配
+        img1 = df_A.values
+        img2 = df_B.values
+
+        # 计算动态范围
+        if method == 'max_range':
+            # 计算动态范围 方法1 先计算动态范围，然后选择最大的
+            data_range_1 = img1.max() - img1.min()
+            data_range_2 = img2.max() - img2.min()
+            data_range = max(data_range_1, data_range_2)
+        else:        
+            # 计算动态范围 方法2 使用两张图像的最大值和最小值的差
+            global_max = max(img1.max(), img2.max())
+            global_min = min(img1.min(), img2.min())
+            data_range = global_max - global_min
+
+        # 计算亮度、对比度和结构分量
+        # 常数
+        C1 = (0.01 * data_range) ** 2
+        C2 = (0.03 * data_range) ** 2
+        C3 = C2 / 2
+
+        # 确保两个图像的形状匹配
+        if img1.shape != img2.shape:
+            raise ValueError("The shape of both images must be the same")
+
+        # 计算亮度分量
+        mu1 = np.mean(img1)
+        mu2 = np.mean(img2)
+        luminance = (2 * mu1 * mu2 + C1) / (mu1**2 + mu2**2 + C1)
+
+        # 计算对比度分量
+        sigma1 = np.std(img1)
+        sigma2 = np.std(img2)
+        contrast = (2 * sigma1 * sigma2 + C2) / (sigma1**2 + sigma2**2 + C2)
+
+        # 计算结构分量
+        covariance = np.mean((img1 - mu1) * (img2 - mu2))
+        structure = (covariance + C3) / (sigma1 * sigma2 + C3)
+
+        # print(f"Luminance: {luminance}, Contrast: {contrast}, Structure: {structure}")
+
+        return contrast
+
+    def structure(self,df_A: pd.DataFrame, df_B: pd.DataFrame, method='max_range'):
+        # 确保两个数据集的形状匹配
+        img1 = df_A.values
+        img2 = df_B.values
+
+        # 计算动态范围
+        if method == 'max_range':
+            # 计算动态范围 方法1 先计算动态范围，然后选择最大的
+            data_range_1 = img1.max() - img1.min()
+            data_range_2 = img2.max() - img2.min()
+            data_range = max(data_range_1, data_range_2)
+        else:        
+            # 计算动态范围 方法2 使用两张图像的最大值和最小值的差
+            global_max = max(img1.max(), img2.max())
+            global_min = min(img1.min(), img2.min())
+            data_range = global_max - global_min
+
+        # 计算亮度、对比度和结构分量
+        # 常数
+        C1 = (0.01 * data_range) ** 2
+        C2 = (0.03 * data_range) ** 2
+        C3 = C2 / 2
+
+        # 确保两个图像的形状匹配
+        if img1.shape != img2.shape:
+            raise ValueError("The shape of both images must be the same")
+
+        # 计算亮度分量
+        mu1 = np.mean(img1)
+        mu2 = np.mean(img2)
+        luminance = (2 * mu1 * mu2 + C1) / (mu1**2 + mu2**2 + C1)
+
+        # 计算对比度分量
+        sigma1 = np.std(img1)
+        sigma2 = np.std(img2)
+        contrast = (2 * sigma1 * sigma2 + C2) / (sigma1**2 + sigma2**2 + C2)
+
+        # 计算结构分量
+        covariance = np.mean((img1 - mu1) * (img2 - mu2))
+        structure = (covariance + C3) / (sigma1 * sigma2 + C3)
+
+        # print(f"Luminance: {luminance}, Contrast: {contrast}, Structure: {structure}")
+
+        return structure
+
+    def Euclidean(self,df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+        return np.linalg.norm(df_A.values.ravel() - df_B.values.ravel())
+
+    def Manhattan(self,df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+        return np.sum(np.abs(df_A.values.ravel() - df_B.values.ravel()))
+
+    def Chebyshev(self,df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+        return np.max(np.abs(df_A.values.ravel() - df_B.values.ravel()))
+
+    def Minkowski(self,df_A: pd.DataFrame, df_B: pd.DataFrame, p: float = 3) -> float:
+        return np.sum(np.abs(df_A.values.ravel() - df_B.values.ravel()) ** p) ** (1 / p)
+
+    def Cosine(self,df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+        A_flat = df_A.values.ravel()
+        B_flat = df_B.values.ravel()
+        return 1 - np.dot(A_flat, B_flat) / (np.linalg.norm(A_flat) * np.linalg.norm(B_flat))
+
+    def Correlation(self,df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+        A_flat = df_A.values.ravel()
+        B_flat = df_B.values.ravel()
+        A_mean = A_flat - np.mean(A_flat)
+        B_mean = B_flat - np.mean(B_flat)
+        return 1 - np.dot(A_mean, B_mean) / (np.linalg.norm(A_mean) * np.linalg.norm(B_mean))
+
+    def Jaccard(self,df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+        A_flat = df_A.values.ravel().astype(bool)
+        B_flat = df_B.values.ravel().astype(bool)
+        intersection = np.sum(A_flat & B_flat)
+        union = np.sum(A_flat | B_flat)
+        return 1 - intersection / union
+
+    def Dice(self,df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+        A_flat = df_A.values.ravel().astype(bool)
+        B_flat = df_B.values.ravel().astype(bool)
+        intersection = np.sum(A_flat & B_flat)
+        return 1 - (2 * intersection) / (np.sum(A_flat) + np.sum(B_flat))
+
+    def Kulsinski(self,df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+        A_flat = df_A.values.ravel().astype(bool)
+        B_flat = df_B.values.ravel().astype(bool)
+        intersection = np.sum(A_flat & B_flat)
+        n = len(A_flat)
+        return (n - intersection + np.sum(A_flat != B_flat)) / (n + np.sum(A_flat != B_flat))
+
+    def Rogers_Tanimoto(self,df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+        A_flat = df_A.values.ravel().astype(bool)
+        B_flat = df_B.values.ravel().astype(bool)
+        n = len(A_flat)
+        return (np.sum(A_flat != B_flat) + np.sum(~A_flat & ~B_flat)) / n
+
+    def Russell_Rao(self,df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+        A_flat = df_A.values.ravel().astype(bool)
+        B_flat = df_B.values.ravel().astype(bool)
+        return np.sum(A_flat & B_flat) / len(A_flat)
+
+    def Sokal_Michener(self,df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+        A_flat = df_A.values.ravel().astype(bool)
+        B_flat = df_B.values.ravel().astype(bool)
+        n = len(A_flat)
+        return (np.sum(A_flat == B_flat) + np.sum(~A_flat & ~B_flat)) / n
+
+    def Sokal_Sneath(self,df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+        A_flat = df_A.values.ravel().astype(bool)
+        B_flat = df_B.values.ravel().astype(bool)
+        intersection = np.sum(A_flat & B_flat)
+        return (2 * intersection) / (np.sum(A_flat) + np.sum(B_flat))
+
+    def Yule(self,df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+        A_flat = df_A.values.ravel().astype(bool)
+        B_flat = df_B.values.ravel().astype(bool)
+        n = len(A_flat)
+        return (np.sum(A_flat & ~B_flat) + np.sum(~A_flat & B_flat)) / n
+
+    def Hsim_Distance(self, df_A: pd.DataFrame, df_B: pd.DataFrame):
+        a = df_A.values.ravel()
+        b = df_B.values.ravel()
+        tmp = []
+        result = 0
+        for i in range(min(len(a), len(b))):
+            tmp.append(1.0 / (1 + np.abs(a[i] - b[i])))
+
+        # print(tmp)
+        result = np.sum(tmp) / (min([len(a), len(b)]))
+        return (result)
+
+    def Close_Distance(self, df_A: pd.DataFrame, df_B: pd.DataFrame):
+        a = df_A.values.ravel()
+        b = df_B.values.ravel()
+        tmp = []
+        result = 0
+        for i in range(min([len(a), len(b)])):
+            tmp.append(np.power(np.e, -np.abs(a[i] - b[i])))
+
+        # print(tmp)
+        result = np.sum(tmp) / (min([len(a), len(b)]))
+        return (result)
+
+
     def apply_function_to_df_pairs(self):
         n = len(self.df_list)
         result = [[None for _ in range(n)] for _ in range(n)]
         
-        for i, df1 in enumerate(self.df_list):
-            for j, df2 in enumerate(self.df_list):
-                result[i][j] = self.fun(df1, df2)
+        # for i, df1 in enumerate(self.df_list):
+        #     for j, df2 in enumerate(self.df_list):
+        #         compare_selected = self.Compare_selector.currentText()
+        #         if compare_selected == 'mutual_info_score_unflattern':
+        #             result[i][j] = self.mutual_info_score_unflattern(df1, df2)
+        #         elif compare_selected == 'mutual_info_score_flattern':
+        #             result[i][j] = self.mutual_info_score_flattern(df1, df2)
+        #         elif compare_selected == 'mutual_info_regression_unflattern':
+        #             result[i][j] = self.mutual_info_regression_unflattern(df1, df2)
+        #         elif compare_selected == 'mutual_info_regression_flattern':
+        #             result[i][j] = self.mutual_info_regression_flattern(df1, df2)
+        #         elif compare_selected == 'calculate_ssim':
+        #             result[i][j] = self.calculate_ssim(df1, df2)
+        #         elif compare_selected == 'calculate_ssim_components':
+        #             result[i][j] = self.calculate_ssim_components(df1, df2)
+        #         elif compare_selected == 'luminance':
+        #             result[i][j] = self.luminance(df1, df2)
+        #         elif compare_selected == 'contrast':
+        #             result[i][j] = self.contrast(df1, df2)
+        #         elif compare_selected == 'structure':
+        #             result[i][j] = self.structure(df1, df2)
+        #         elif compare_selected == 'Euclidean':
+        #             result[i][j] = self.Euclidean(df1, df2)
+        #         elif compare_selected == 'Manhattan':
+        #             result[i][j] = self.Manhattan(df1, df2)
+        #         elif compare_selected == 'Chebyshev':
+        #             result[i][j] = self.Chebyshev(df1, df2)
+        #         elif compare_selected == 'Minkowski':
+        #             result[i][j] = self.Minkowski(df1, df2)
+        #         elif compare_selected == 'Cosine':
+        #             result[i][j] = self.Cosine(df1, df2)
+        #         elif compare_selected == 'Correlation':
+        #             result[i][j] = self.Correlation(df1, df2)
+        #         elif compare_selected == 'Jaccard':
+        #             result[i][j] = self.Jaccard(df1, df2)
+        #         elif compare_selected == 'Dice':
+        #             result[i][j] = self.Dice(df1, df2)
+        #         elif compare_selected == 'Kulsinski':
+        #             result[i][j] = self.Kulsinski(df1, df2)
+        #         elif compare_selected == 'Rogers_Tanimoto':
+        #             result[i][j] = self.Rogers_Tanimoto(df1, df2)
+        #         elif compare_selected == 'Russell_Rao':
+        #             result[i][j] = self.Russell_Rao(df1, df2)
+        #         elif compare_selected == 'Sokal_Michener':
+        #             result[i][j] = self.Sokal_Michener(df1, df2)
+        #         elif compare_selected == 'Sokal_Sneath':
+        #             result[i][j] = self.Sokal_Sneath(df1, df2)
+        #         elif compare_selected == 'Yule':
+        #             result[i][j] = self.Yule(df1, df2)
+        #         elif compare_selected == 'Hsim_Distance':
+        #             result[i][j] = self.Hsim_Distance(df1, df2)
+        #         elif compare_selected == 'Close_Distance':
+        #             result[i][j] = self.Close_Distance(df1, df2)
+        #         else:
+        #             result[i][j] = self.fun(df1, df2)
+
+        # 将 DataFrame 转换为 numpy 数组
+        arrays = np.array([df.values.ravel() for df in self.df_list])
+        
+        # 创建一个 n x n 的结果矩阵
+        results = np.zeros((n, n))
+        distance_list = ['mutual_info_score_unflattern',
+                 'mutual_info_score_flattern',
+                 'mutual_info_regression_unflattern',
+                 'mutual_info_regression_flattern',
+                 'calculate_ssim',
+                 'luminance', 'contrast', 'structure',
+                 "Euclidean", "Manhattan", "Chebyshev", 'Minkowski', 'Cosine', 'Correlation', 'Jaccard', 'Dice', 'Kulsinski', 'Rogers-Tanimoto', 'Russell-Rao', 'Sokal-Michener', 'Sokal-Sneath', 'Yule']
+
+        # 使用广播机制计算距离
+        for i in range(n):
+            A = arrays[i]
+            B = arrays[i:]  # 只计算上三角部分
+            compare_selected = self.Compare_selector.currentText()
+            if compare_selected == 'mutual_info_score_unflattern':
+                func = self.mutual_info_score_unflattern
+            elif compare_selected == 'mutual_info_score_flattern':
+                func = self.mutual_info_score_flattern
+            elif compare_selected == 'mutual_info_regression_unflattern':
+                func = self.mutual_info_regression_unflattern
+            elif compare_selected == 'mutual_info_regression_flattern':
+                func = self.mutual_info_regression_flattern
+            elif compare_selected == 'calculate_ssim':
+                func = self.calculate_ssim
+            elif compare_selected == 'luminance':
+                func = self.luminance
+            elif compare_selected == 'contrast':
+                func = self.contrast
+            elif compare_selected == 'structure':
+                func = self.structure
+            elif compare_selected == 'Euclidean':
+                func = self.Euclidean
+            elif compare_selected == 'Manhattan':
+                func = self.Manhattan
+            elif compare_selected == 'Chebyshev':
+                func = self.Chebyshev
+            elif compare_selected == 'Minkowski':
+                func = self.Minkowski
+            elif compare_selected == 'Cosine':
+                func = self.Cosine
+            elif compare_selected == 'Correlation':
+                func = self.Correlation
+            elif compare_selected == 'Jaccard':
+                func = self.Jaccard
+            elif compare_selected == 'Dice':
+                func = self.Dice
+            elif compare_selected == 'Kulsinski':
+                func = self.Kulsinski
+            elif compare_selected == 'Rogers_Tanimoto':
+                func = self.Rogers_Tanimoto
+            elif compare_selected == 'Russell_Rao':
+                func = self.Russell_Rao
+            elif compare_selected == 'Sokal_Michener':
+                func = self.Sokal_Michener
+            elif compare_selected == 'Sokal_Sneath':
+                func = self.Sokal_Sneath
+            elif compare_selected == 'Yule':
+                func = self.Yule
+            elif compare_selected == 'Hsim_Distance':
+                func = self.Hsim_Distance
+            elif compare_selected == 'Close_Distance':
+                func = self.Close_Distance
+            else:
+                func = self.fun
+
+            # distances = np.array([func(A, b) for b in B])
+            # results[i, i:] = distances
+            # results[i:, i] = distances  # 对称矩阵
+
+            # 使用广播机制计算距离
+            for i in range(n):
+                A = arrays[i]
+                B = arrays[i:]  # 只计算上三角部分
+                # 使用 numpy 的广播机制计算距离，并将 A 和 b 转换为 DataFrame
+                distances = np.array([func(pd.DataFrame(A.reshape(self.df_list[i].shape)), pd.DataFrame(b.reshape(self.df_list[i].shape))) for b in B])
+                results[i, i:] = distances
+                results[i:, i] = distances  # 对称矩阵
+    
+        
         
         labels = self.df_name_list
-        result_df = pd.DataFrame(result, index=labels, columns=labels)
-        return result_df
+        result_df = pd.DataFrame(results, index=labels, columns=labels)  
+        self.df = result_df
+        model = PandasModel(self.df)
+        self.table.setModel(model)
 
     # Example usage:
     # 2024年7月10日进度

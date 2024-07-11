@@ -199,6 +199,309 @@ def mutual_info_regression_flattern(df_A=pd.DataFrame,df_B=pd.DataFrame):
     print(f"Mutual Information Regression (Flattened): {mi_r[0]}")
     return(mi_r[0])
 
+def calculate_ssim(df_A: pd.DataFrame, df_B: pd.DataFrame):
+    # 确保两个数据集的形状匹配
+    if df_A.shape != df_B.shape:
+        raise ValueError("The shape of both dataframes must be the same")
+    # 处理缺失值（例如，使用0值填充）
+    df_A = df_A.fillna(0)
+    df_B = df_B.fillna(0)
+    # 将数据转换为numpy数组
+    data_A = df_A.values
+    data_B = df_B.values
+    # 计算SSIM
+    data_range = data_B.max() - data_B.min()
+    ssim_value, ssim_img = ssim(data_A, data_B, full=True, data_range=data_range)
+    print(f"SSIM: {ssim_value}")
+
+    # 可视化SSIM图像
+    # 可视化
+    plt.figure(figsize=(10, 3))
+
+    # 原始图像
+    plt.subplot(1, 3, 1)
+    plt.title('Data A (RAW)')
+    plt.imshow(data_A, aspect='auto', cmap='gray')
+    plt.colorbar()
+
+    plt.subplot(1, 3, 2)
+    plt.title('Data B (RAW)')
+    plt.imshow(data_B, aspect='auto', cmap='gray')
+    plt.colorbar()
+    
+    plt.subplot(1, 3, 3)
+    plt.imshow(ssim_img, aspect='auto', cmap='gray')
+    plt.title(f'SSIM Image: {ssim_value}')
+    plt.colorbar()
+    plt.show()
+    return ssim_value, ssim_img
+
+def calculate_ssim_components(df_A: pd.DataFrame, df_B: pd.DataFrame, method='max_range'):
+    # 确保两个数据集的形状匹配
+    img1 = df_A.values
+    img2 = df_B.values
+
+     # 计算动态范围
+    if method == 'max_range':
+        # 计算动态范围 方法1 先计算动态范围，然后选择最大的
+        data_range_1 = img1.max() - img1.min()
+        data_range_2 = img2.max() - img2.min()
+        data_range = max(data_range_1, data_range_2)
+    else:        
+        # 计算动态范围 方法2 使用两张图像的最大值和最小值的差
+        global_max = max(img1.max(), img2.max())
+        global_min = min(img1.min(), img2.min())
+        data_range = global_max - global_min
+
+    # 计算亮度、对比度和结构分量
+    # 常数
+    C1 = (0.01 * data_range) ** 2
+    C2 = (0.03 * data_range) ** 2
+    C3 = C2 / 2
+
+    # 确保两个图像的形状匹配
+    if img1.shape != img2.shape:
+        raise ValueError("The shape of both images must be the same")
+
+    # 计算亮度分量
+    mu1 = np.mean(img1)
+    mu2 = np.mean(img2)
+    luminance = (2 * mu1 * mu2 + C1) / (mu1**2 + mu2**2 + C1)
+
+    # 计算对比度分量
+    sigma1 = np.std(img1)
+    sigma2 = np.std(img2)
+    contrast = (2 * sigma1 * sigma2 + C2) / (sigma1**2 + sigma2**2 + C2)
+
+    # 计算结构分量
+    covariance = np.mean((img1 - mu1) * (img2 - mu2))
+    structure = (covariance + C3) / (sigma1 * sigma2 + C3)
+
+    print(f"Luminance: {luminance}, Contrast: {contrast}, Structure: {structure}")
+
+    return luminance, contrast, structure
+
+def luminance(df_A: pd.DataFrame, df_B: pd.DataFrame, method='max_range'):
+    # 确保两个数据集的形状匹配
+    img1 = df_A.values
+    img2 = df_B.values
+
+     # 计算动态范围
+    if method == 'max_range':
+        # 计算动态范围 方法1 先计算动态范围，然后选择最大的
+        data_range_1 = img1.max() - img1.min()
+        data_range_2 = img2.max() - img2.min()
+        data_range = max(data_range_1, data_range_2)
+    else:        
+        # 计算动态范围 方法2 使用两张图像的最大值和最小值的差
+        global_max = max(img1.max(), img2.max())
+        global_min = min(img1.min(), img2.min())
+        data_range = global_max - global_min
+
+    # 计算亮度、对比度和结构分量
+    # 常数
+    C1 = (0.01 * data_range) ** 2
+    C2 = (0.03 * data_range) ** 2
+    C3 = C2 / 2
+
+    # 确保两个图像的形状匹配
+    if img1.shape != img2.shape:
+        raise ValueError("The shape of both images must be the same")
+
+    # 计算亮度分量
+    mu1 = np.mean(img1)
+    mu2 = np.mean(img2)
+    luminance = (2 * mu1 * mu2 + C1) / (mu1**2 + mu2**2 + C1)
+
+    # 计算对比度分量
+    sigma1 = np.std(img1)
+    sigma2 = np.std(img2)
+    contrast = (2 * sigma1 * sigma2 + C2) / (sigma1**2 + sigma2**2 + C2)
+
+    # 计算结构分量
+    covariance = np.mean((img1 - mu1) * (img2 - mu2))
+    structure = (covariance + C3) / (sigma1 * sigma2 + C3)
+
+    print(f"Luminance: {luminance}, Contrast: {contrast}, Structure: {structure}")
+
+    return luminance
+
+def contrast(df_A: pd.DataFrame, df_B: pd.DataFrame, method='max_range'):
+    # 确保两个数据集的形状匹配
+    img1 = df_A.values
+    img2 = df_B.values
+
+     # 计算动态范围
+    if method == 'max_range':
+        # 计算动态范围 方法1 先计算动态范围，然后选择最大的
+        data_range_1 = img1.max() - img1.min()
+        data_range_2 = img2.max() - img2.min()
+        data_range = max(data_range_1, data_range_2)
+    else:        
+        # 计算动态范围 方法2 使用两张图像的最大值和最小值的差
+        global_max = max(img1.max(), img2.max())
+        global_min = min(img1.min(), img2.min())
+        data_range = global_max - global_min
+
+    # 计算亮度、对比度和结构分量
+    # 常数
+    C1 = (0.01 * data_range) ** 2
+    C2 = (0.03 * data_range) ** 2
+    C3 = C2 / 2
+
+    # 确保两个图像的形状匹配
+    if img1.shape != img2.shape:
+        raise ValueError("The shape of both images must be the same")
+
+    # 计算亮度分量
+    mu1 = np.mean(img1)
+    mu2 = np.mean(img2)
+    luminance = (2 * mu1 * mu2 + C1) / (mu1**2 + mu2**2 + C1)
+
+    # 计算对比度分量
+    sigma1 = np.std(img1)
+    sigma2 = np.std(img2)
+    contrast = (2 * sigma1 * sigma2 + C2) / (sigma1**2 + sigma2**2 + C2)
+
+    # 计算结构分量
+    covariance = np.mean((img1 - mu1) * (img2 - mu2))
+    structure = (covariance + C3) / (sigma1 * sigma2 + C3)
+
+    print(f"Luminance: {luminance}, Contrast: {contrast}, Structure: {structure}")
+
+    return contrast
+
+def structure(df_A: pd.DataFrame, df_B: pd.DataFrame, method='max_range'):
+    # 确保两个数据集的形状匹配
+    img1 = df_A.values
+    img2 = df_B.values
+
+     # 计算动态范围
+    if method == 'max_range':
+        # 计算动态范围 方法1 先计算动态范围，然后选择最大的
+        data_range_1 = img1.max() - img1.min()
+        data_range_2 = img2.max() - img2.min()
+        data_range = max(data_range_1, data_range_2)
+    else:        
+        # 计算动态范围 方法2 使用两张图像的最大值和最小值的差
+        global_max = max(img1.max(), img2.max())
+        global_min = min(img1.min(), img2.min())
+        data_range = global_max - global_min
+
+    # 计算亮度、对比度和结构分量
+    # 常数
+    C1 = (0.01 * data_range) ** 2
+    C2 = (0.03 * data_range) ** 2
+    C3 = C2 / 2
+
+    # 确保两个图像的形状匹配
+    if img1.shape != img2.shape:
+        raise ValueError("The shape of both images must be the same")
+
+    # 计算亮度分量
+    mu1 = np.mean(img1)
+    mu2 = np.mean(img2)
+    luminance = (2 * mu1 * mu2 + C1) / (mu1**2 + mu2**2 + C1)
+
+    # 计算对比度分量
+    sigma1 = np.std(img1)
+    sigma2 = np.std(img2)
+    contrast = (2 * sigma1 * sigma2 + C2) / (sigma1**2 + sigma2**2 + C2)
+
+    # 计算结构分量
+    covariance = np.mean((img1 - mu1) * (img2 - mu2))
+    structure = (covariance + C3) / (sigma1 * sigma2 + C3)
+
+    print(f"Luminance: {luminance}, Contrast: {contrast}, Structure: {structure}")
+
+    return structure
+
+def Euclidean(df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+    return np.linalg.norm(df_A.values.ravel() - df_B.values.ravel())
+
+def Manhattan(df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+    return np.sum(np.abs(df_A.values.ravel() - df_B.values.ravel()))
+
+def Chebyshev(df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+    return np.max(np.abs(df_A.values.ravel() - df_B.values.ravel()))
+
+def Minkowski(df_A: pd.DataFrame, df_B: pd.DataFrame, p: float = 3) -> float:
+    return np.sum(np.abs(df_A.values.ravel() - df_B.values.ravel()) ** p) ** (1 / p)
+
+def Cosine(df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+    A_flat = df_A.values.ravel()
+    B_flat = df_B.values.ravel()
+    return 1 - np.dot(A_flat, B_flat) / (np.linalg.norm(A_flat) * np.linalg.norm(B_flat))
+
+def Correlation(df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+    A_flat = df_A.values.ravel()
+    B_flat = df_B.values.ravel()
+    A_mean = A_flat - np.mean(A_flat)
+    B_mean = B_flat - np.mean(B_flat)
+    return 1 - np.dot(A_mean, B_mean) / (np.linalg.norm(A_mean) * np.linalg.norm(B_mean))
+
+def Jaccard(df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+    A_flat = df_A.values.ravel().astype(bool)
+    B_flat = df_B.values.ravel().astype(bool)
+    intersection = np.sum(A_flat & B_flat)
+    union = np.sum(A_flat | B_flat)
+    return 1 - intersection / union
+
+def Dice(df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+    A_flat = df_A.values.ravel().astype(bool)
+    B_flat = df_B.values.ravel().astype(bool)
+    intersection = np.sum(A_flat & B_flat)
+    return 1 - (2 * intersection) / (np.sum(A_flat) + np.sum(B_flat))
+
+def Kulsinski(df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+    A_flat = df_A.values.ravel().astype(bool)
+    B_flat = df_B.values.ravel().astype(bool)
+    intersection = np.sum(A_flat & B_flat)
+    n = len(A_flat)
+    return (n - intersection + np.sum(A_flat != B_flat)) / (n + np.sum(A_flat != B_flat))
+
+def Rogers_Tanimoto(df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+    A_flat = df_A.values.ravel().astype(bool)
+    B_flat = df_B.values.ravel().astype(bool)
+    n = len(A_flat)
+    return (np.sum(A_flat != B_flat) + np.sum(~A_flat & ~B_flat)) / n
+
+def Russell_Rao(df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+    A_flat = df_A.values.ravel().astype(bool)
+    B_flat = df_B.values.ravel().astype(bool)
+    return np.sum(A_flat & B_flat) / len(A_flat)
+
+def Sokal_Michener(df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+    A_flat = df_A.values.ravel().astype(bool)
+    B_flat = df_B.values.ravel().astype(bool)
+    n = len(A_flat)
+    return (np.sum(A_flat == B_flat) + np.sum(~A_flat & ~B_flat)) / n
+
+def Sokal_Sneath(df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+    A_flat = df_A.values.ravel().astype(bool)
+    B_flat = df_B.values.ravel().astype(bool)
+    intersection = np.sum(A_flat & B_flat)
+    return (2 * intersection) / (np.sum(A_flat) + np.sum(B_flat))
+
+def Yule(df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
+    A_flat = df_A.values.ravel().astype(bool)
+    B_flat = df_B.values.ravel().astype(bool)
+    n = len(A_flat)
+    return (np.sum(A_flat & ~B_flat) + np.sum(~A_flat & B_flat)) / n
+
+
+
+
+distance_list = ['mutual_info_score_unflattern',
+                 'mutual_info_score_flattern',
+                 'mutual_info_regression_unflattern',
+                 'mutual_info_regression_flattern',
+                 'calculate_ssim',
+                 'luminance', 'contrast', 'structure',
+                 "Euclidean", "Manhattan", "Chebyshev", 'Minkowski', 'Cosine', 'Correlation', 'Jaccard', 'Dice', 'Kulsinski', 'Rogers-Tanimoto', 'Russell-Rao', 'Sokal-Michener', 'Sokal-Sneath', 'Yule']
+
+
+
 def log_transform(data):
     return np.log1p(data)
 
@@ -300,89 +603,6 @@ def visual_diff(df_A=pd.DataFrame,df_B=pd.DataFrame):
     plt.tight_layout()
     # plt.axis('off') 
     plt.show()
-
-def calculate_ssim_components(df_A: pd.DataFrame, df_B: pd.DataFrame, method='max_range'):
-    # 确保两个数据集的形状匹配
-    img1 = df_A.values
-    img2 = df_B.values
-
-     # 计算动态范围
-    if method == 'max_range':
-        # 计算动态范围 方法1 先计算动态范围，然后选择最大的
-        data_range_1 = img1.max() - img1.min()
-        data_range_2 = img2.max() - img2.min()
-        data_range = max(data_range_1, data_range_2)
-    else:        
-        # 计算动态范围 方法2 使用两张图像的最大值和最小值的差
-        global_max = max(img1.max(), img2.max())
-        global_min = min(img1.min(), img2.min())
-        data_range = global_max - global_min
-
-    # 计算亮度、对比度和结构分量
-    # 常数
-    C1 = (0.01 * data_range) ** 2
-    C2 = (0.03 * data_range) ** 2
-    C3 = C2 / 2
-
-    # 确保两个图像的形状匹配
-    if img1.shape != img2.shape:
-        raise ValueError("The shape of both images must be the same")
-
-    # 计算亮度分量
-    mu1 = np.mean(img1)
-    mu2 = np.mean(img2)
-    luminance = (2 * mu1 * mu2 + C1) / (mu1**2 + mu2**2 + C1)
-
-    # 计算对比度分量
-    sigma1 = np.std(img1)
-    sigma2 = np.std(img2)
-    contrast = (2 * sigma1 * sigma2 + C2) / (sigma1**2 + sigma2**2 + C2)
-
-    # 计算结构分量
-    covariance = np.mean((img1 - mu1) * (img2 - mu2))
-    structure = (covariance + C3) / (sigma1 * sigma2 + C3)
-
-    print(f"Luminance: {luminance}, Contrast: {contrast}, Structure: {structure}")
-
-    return luminance, contrast, structure
-
-
-def calculate_ssim(df_A: pd.DataFrame, df_B: pd.DataFrame):
-    # 确保两个数据集的形状匹配
-    if df_A.shape != df_B.shape:
-        raise ValueError("The shape of both dataframes must be the same")
-    # 处理缺失值（例如，使用0值填充）
-    df_A = df_A.fillna(0)
-    df_B = df_B.fillna(0)
-    # 将数据转换为numpy数组
-    data_A = df_A.values
-    data_B = df_B.values
-    # 计算SSIM
-    data_range = data_B.max() - data_B.min()
-    ssim_value, ssim_img = ssim(data_A, data_B, full=True, data_range=data_range)
-    print(f"SSIM: {ssim_value}")
-
-    # 可视化SSIM图像
-    # 可视化
-    plt.figure(figsize=(10, 3))
-
-    # 原始图像
-    plt.subplot(1, 3, 1)
-    plt.title('Data A (RAW)')
-    plt.imshow(data_A, aspect='auto', cmap='gray')
-    plt.colorbar()
-
-    plt.subplot(1, 3, 2)
-    plt.title('Data B (RAW)')
-    plt.imshow(data_B, aspect='auto', cmap='gray')
-    plt.colorbar()
-    
-    plt.subplot(1, 3, 3)
-    plt.imshow(ssim_img, aspect='auto', cmap='gray')
-    plt.title(f'SSIM Image: {ssim_value}')
-    plt.colorbar()
-    plt.show()
-    return ssim_value, ssim_img
 
 mutual_info(df_A,df_B)
 # mutual_info_score_unflattern(df_A,df_B)
