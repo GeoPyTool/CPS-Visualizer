@@ -537,9 +537,6 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         # Example function: return the sum of the shapes of the two DataFrames
         return df1.shape[0] + df2.shape[0]
 
-        # Apply the function to the DataFrame pairs
-        result = self.apply_function_to_df_pairs(fun)
-        print(result)
     def clear_data(self):
         # 清空数据
         self.df = pd.DataFrame()
