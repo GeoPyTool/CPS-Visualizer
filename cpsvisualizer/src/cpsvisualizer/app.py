@@ -32,7 +32,8 @@ except ImportError:
     import importlib_metadata
 
 from PySide6.QtGui import QAction, QGuiApplication
-from PySide6.QtWidgets import QComboBox,QAbstractItemView, QHBoxLayout, QLabel, QMainWindow, QApplication, QMenu, QSizePolicy, QWidget, QToolBar, QFileDialog, QTableView, QVBoxLayout, QHBoxLayout, QWidget, QSlider,  QGroupBox , QLabel , QWidgetAction, QPushButton, QSizePolicy
+from PySide6.QtWidgets import QComboBox,QAbstractItemView, QHBoxLayout, QLabel, QMainWindow, QApplication, QMenu, QSizePolicy, QWidget, QToolBar, QFileDialog, QTableView, QVBoxLayout, QHBoxLayout, QWidget, QSlider,  QGroupBox , QLabel , QWidgetAction, QPushButton, QSizePolicy, QMessageBox
+from PySide6.QtWidgets import QListWidget, QListWidgetItem, QLabel
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, QVariantAnimation, Qt
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -333,10 +334,6 @@ def standardize(data):
     scaler = StandardScaler()
     return scaler.fit_transform(data)
 
-def min_max_scaled_normalization(data):
-    min_max_scaled = (data - np.min(data)) / (np.max(data) - np.min(data))
-    return min_max_scaled
-
 def equalize_hist(data):
     return exposure.equalize_hist(data)
 
@@ -416,6 +413,52 @@ def visual_diff(df_A=pd.DataFrame,df_B=pd.DataFrame):
     # plt.axis('off') 
     plt.show()
 
+from PySide6.QtWidgets import QComboBox, QListWidget, QListWidgetItem, QCheckBox, QStyledItemDelegate, QVBoxLayout, QWidget, QApplication
+from PySide6.QtCore import Qt, Signal
+
+class CheckBoxDelegate(QStyledItemDelegate):
+    def createEditor(self, parent, option, index):
+        checkbox = QCheckBox(parent)
+        checkbox.stateChanged.connect(self.commitData)
+        return checkbox
+
+    def setEditorData(self, editor, index):
+        value = index.data(Qt.CheckStateRole)
+        editor.setChecked(value == Qt.Checked)
+
+    def setModelData(self, editor, model, index):
+        model.setData(index, Qt.Checked if editor.isChecked() else Qt.Unchecked, Qt.CheckStateRole)
+
+class MultiSelectComboBox(QComboBox):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setEditable(True)
+        self.lineEdit().setReadOnly(True)
+        self.lineEdit().setPlaceholderText("Select items")
+        self.list_widget = QListWidget(self)
+        self.list_widget.setItemDelegate(CheckBoxDelegate())
+        self.list_widget.itemChanged.connect(self.updateLineEdit)
+        self.setModel(self.list_widget.model())
+        self.setView(self.list_widget)
+        self.list_widget.setMaximumHeight(100)  # 限制高度为100像素
+
+    def addItem(self, text):
+        item = QListWidgetItem(text)
+        item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+        item.setCheckState(Qt.Unchecked)
+        self.list_widget.addItem(item)
+
+    def addItems(self, texts):
+        for text in texts:
+            self.addItem(text)
+
+    def updateLineEdit(self):
+        selected_items = [self.list_widget.item(i).text() for i in range(self.list_widget.count()) if self.list_widget.item(i).checkState() == Qt.Checked]
+        self.lineEdit().setText(", ".join(selected_items))
+
+    def selectedItems(self):
+        return [self.list_widget.item(i).text() for i in range(self.list_widget.count()) if self.list_widget.item(i).checkState() == Qt.Checked]
+
 
 class CPSVisualizer(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
@@ -427,6 +470,8 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         self.df = pd.DataFrame()    
         self.df_list=[]
         self.df_name_list = []
+        self.function_list = ["log_transform","centering_transform","z_score_normalization","standardize","equalize_hist"]
+
     def init_ui(self):
         self.setWindowTitle('CPS-Visualizer: Calculation and visualization of CPS (counts per second) for ICPMS scan data.')
         self.resize(1024, 600)  # 设置窗口尺寸为1024*600
@@ -457,8 +502,36 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         clear_action.setShortcut('Ctrl+C') # 设置快捷键为Ctrl+C
         clear_action.triggered.connect(self.clear_data)  # 连接到clear_data方法
         self.toolbar.addAction(clear_action)       
-        self.toolbar.addWidget(spacer) # Add a separator before the first switch
 
+        # 在工具栏中添加一个Plot action
+        plot_action = QAction('Plot Data', self)
+        plot_action.setShortcut('Ctrl+P')  # 设置快捷键为Ctrl+P
+        plot_action.triggered.connect(self.plot_data)
+        self.toolbar.addAction(plot_action)
+
+        # 在工具栏中添加一个 Save action
+        save_action = QAction('Save Data', self)
+        save_action.setShortcut('Ctrl+S')  # 设置快捷键为Ctrl+S
+        save_action.triggered.connect(self.save_data)
+        self.toolbar.addAction(save_action)
+
+        # 选择数据列表
+        self.data_label = QLabel('Select Data')
+        self.data_selector = QListWidget(self)
+        self.data_selector.addItems(self.df_name_list)
+        self.data_selector.setSelectionMode(QListWidget.MultiSelection)  # 设置为多选模式
+        self.data_selector.itemSelectionChanged.connect(self.plot_data)  # 连接到 plot_data 方法
+
+
+        # 选择数据处理方法
+        self.function_label = QLabel('Select Function')
+        self.function_selector = QListWidget(self)
+        self.function_selector.addItems(self.function_list)
+        self.function_selector.setSelectionMode(QListWidget.MultiSelection)  # 设置为多选模式
+        self.function_selector.itemSelectionChanged.connect(self.plot_data)  # 连接到 plot_data 方法
+
+
+        self.toolbar.addWidget(spacer) # Add a separator before the first switch
         # 创建一个表格视图
         self.table = CustomQTableView()
 
@@ -472,12 +545,18 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         self.canvas.setSizePolicy(sizePolicy)
         # 创建一个水平布局并添加表格视图和画布
         base_layout = QHBoxLayout()
-        self.left_layout = QVBoxLayout()
+        self.left_layout = QHBoxLayout()
+        self.left_layout_sub = QVBoxLayout()
         self.right_layout = QVBoxLayout()
-        self.left_layout.addWidget(self.table)        
+        self.left_layout_sub.addWidget(self.data_label)
+        self.left_layout_sub.addWidget(self.data_selector)
+        self.left_layout_sub.addWidget(self.function_label)
+        self.left_layout_sub.addWidget(self.function_selector)
+        self.left_layout.addWidget(self.table,10)        
+        self.left_layout.addLayout(self.left_layout_sub,1)
         self.right_layout.addWidget(self.canvas)
-        base_layout.addLayout(self.left_layout)
-        base_layout.addLayout(self.right_layout)
+        base_layout.addLayout(self.left_layout,4)
+        base_layout.addLayout(self.right_layout,6)
 
         # 创建一个QWidget，设置其布局为我们刚刚创建的布局，然后设置其为中心部件
         self.main_frame.setLayout(base_layout)
@@ -504,11 +583,12 @@ class CPSVisualizer(QtWidgets.QMainWindow):
 
         # print(self.df_list)
         print(self.df_name_list)
+        self.data_selector.addItems(self.df_name_list)
         # model = PandasModel(self.df)
         # self.table.setModel(model) 
 
-        new_df = self.apply_function_to_df_pairs()
-        model = PandasModel(new_df)
+        self.df = self.apply_function_to_df_pairs()
+        model = PandasModel(self.df)
         self.table.setModel(model)
 
     def clean_tmp_name(self,tmp_name):
@@ -541,12 +621,119 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         # 清空数据
         self.df = pd.DataFrame()
         self.table.setModel(PandasModel(self.df))
-
+        self.df_list=[]
+        self.df_name_list = []
         # 清空图表
         self.canvas.figure.clear()
         self.canvas.draw()
+        self.data_selector.clear()
 
-    
+    def plot_data(self):
+        # 清除之前的图像
+        self.canvas.figure.clear()
+        self.fig.clear()
+        
+        selected_items = self.data_selector.selectedItems()
+        selected_texts = [item.text() for item in selected_items]
+        
+        # 获取选择的数量
+        num_selected = len(selected_texts)
+        
+        if num_selected == 0:
+            return
+        
+        # 计算行数和列数
+        cols = math.ceil(math.sqrt(num_selected))
+        rows = math.ceil(num_selected / cols)
+        
+        # 动态创建子图
+        for i, text in enumerate(selected_texts):
+            ax = self.fig.add_subplot(rows, cols, i + 1)
+            index = self.df_name_list.index(text)
+            # ax.imshow(self.df_list[index], cmap='gray', aspect='auto')
+
+            tmp_data = self.df_list[index].to_numpy()
+
+
+            selected_functions = self.function_selector.selectedItems()
+            selected_func = [item.text() for item in selected_functions]
+
+            try:
+                if 'log_transform' in selected_func:
+                    tmp_data = self.log_transform(tmp_data)
+            except Exception as e:
+                QMessageBox.critical(None, "Error", f"Log Transform failed: {e}")
+
+            try:
+                if 'centering_transform' in selected_func:
+                    tmp_data = self.centering_transform(tmp_data)
+            except Exception as e:
+                QMessageBox.critical(None, "Error", f"Centering Transform failed: {e}")
+
+            try:
+                if 'z_score_normalization' in selected_func:
+                    tmp_data = self.z_score_normalization(tmp_data)
+            except Exception as e:
+                QMessageBox.critical(None, "Error", f"Z-Score Normalization failed: {e}")
+
+            try:
+                if 'standardize' in selected_func:
+                    tmp_data = self.standardize(tmp_data)
+            except Exception as e:
+                QMessageBox.critical(None, "Error", f"Standardization failed: {e}")
+
+            try:
+                if 'equalize_hist' in selected_func:
+                    tmp_data = self.equalize_hist(tmp_data)
+            except Exception as e:
+                QMessageBox.critical(None, "Error", f"Histogram Equalization failed: {e}")
+            ax.imshow(tmp_data, cmap='gray', aspect='auto')
+            ax.set_title(text)  # 设置小标题
+        
+        self.canvas.draw()
+
+    def save_data(self):
+        # 保存数据
+        DataFileOutput, ok2 = QFileDialog.getSaveFileName(self,
+                                                          'Save Data File','DataFileOutput',
+                                                          'CSV Files (*.csv);;Excel Files (*.xlsx)')  # 数据文件保存输出
+          
+        if (DataFileOutput != ''):
+            if ('csv' in DataFileOutput):
+                self.df.to_csv(DataFileOutput, sep=',', encoding='utf-8')
+            elif ('xls' in DataFileOutput):
+                self.df.to_excel(DataFileOutput)
+
+
+
+    def log_transform(self, data):
+        return np.log1p(data)
+
+    # def log_centering_transform(self, data):
+    #     # 对数据进行对数变换
+    #     log_data = np.log1p(data)  # 使用log1p避免log(0)的问题
+
+    #     # 对变换后的数据进行中心化处理
+    #     centered_log_data = log_data - np.mean(log_data, axis=0)
+
+    #     return centered_log_data
+
+    def centering_transform(self, data):
+        # 中心化处理
+        centered_log_data = data - np.mean(data, axis=0)
+        return centered_log_data
+
+    def z_score_normalization(self, data):
+        return (data - np.mean(data, axis=0)) / np.std(data, axis=0)
+
+    def standardize(self, data):
+        scaler = StandardScaler()
+        return scaler.fit_transform(data)
+
+    def equalize_hist(self, data):
+        return exposure.equalize_hist(data)
+
+
 def main():
     # Linux desktop environments use an app's .desktop file to integrate the app
     # in to their application menus. The .desktop file of this app will include
