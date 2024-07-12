@@ -3,7 +3,8 @@ Calculation and visualization of CPS (counts per second) for ICPMS scan data.
 """
 import importlib.metadata
 import sys
-
+import warnings
+warnings.filterwarnings("ignore")
 from PySide6 import QtWidgets
 import json
 import pickle
@@ -520,11 +521,18 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         plot_action.triggered.connect(self.plot_data)
         self.toolbar.addAction(plot_action)
 
-        # 在工具栏中添加一个 Save action
-        save_action = QAction('Save Data', self)
-        save_action.setShortcut('Ctrl+S')  # 设置快捷键为Ctrl+S
-        save_action.triggered.connect(self.save_data)
-        self.toolbar.addAction(save_action)
+
+        # 在工具栏中添加一个 Save Data action        
+        save_data_action = QAction('Save Data', self)
+        save_data_action.setShortcut('Ctrl+S')  # 设置快捷键为Ctrl+S
+        save_data_action.triggered.connect(self.save_data)
+        self.toolbar.addAction(save_data_action)
+        
+        # 在工具栏中添加一个 Save Plot action
+        save_plot_action = QAction('Save Plot', self)
+        save_plot_action.setShortcut('Ctrl+P')  # 设置快捷键为Ctrl+P
+        save_plot_action.triggered.connect(self.save_plot)
+        self.toolbar.addAction(save_plot_action)
 
         # 选择数据列表
         self.data_label = QLabel('Select Data')
@@ -1251,7 +1259,7 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         labels = self.df_name_list
         result_df = pd.DataFrame(results, index=labels, columns=labels)  
         self.df = result_df
-        model = PandasModel(self.df)
+        model = PandasModel(self.df.round(4))
         self.table.setModel(model)
 
     # Example usage:
@@ -1348,6 +1356,20 @@ class CPSVisualizer(QtWidgets.QMainWindow):
             elif ('xls' in DataFileOutput):
                 self.df.to_excel(DataFileOutput)
 
+    def save_plot(self):
+        file_name, _ = QFileDialog.getSaveFileName(self, 
+                                                   'Save Plot', 
+                                                    'CPS Image', 'PNG Files (*.png);;JPEG Files (*.jpg *.jpeg);;SVG Files (*.svg);;PDF Files (*.pdf)')
+        if file_name:
+            try:
+                # Set dpi to 600 for bitmap formats
+                if file_name.lower().endswith(('.png', '.jpg', '.jpeg')):
+                    self.canvas.figure.savefig(file_name, dpi=self.dpi*10)
+                else:
+                    self.canvas.figure.savefig(file_name)
+            except Exception as e:
+                # print(f"Failed to save figure: {e}")
+                pass
 
 
     def log_transform(self, data):
