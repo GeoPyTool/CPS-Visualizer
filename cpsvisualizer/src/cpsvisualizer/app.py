@@ -15,6 +15,7 @@ import numpy as np
 import itertools
 import math
 
+from joblib import Parallel, delayed
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
@@ -619,7 +620,7 @@ class CPSVisualizer(QtWidgets.QMainWindow):
 
 
 
-    def mutual_info_score_unflattern(self,df_A=pd.DataFrame,df_B=pd.DataFrame):
+    def mutual_info_score_unflattern_old(self,df_A=pd.DataFrame,df_B=pd.DataFrame):
         data_A = df_A.values
         data_B = df_B.values
         # 计算互信息
@@ -654,6 +655,30 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         # print(f"Mutual Information Score Average: {average_mutual_info_s}")
         return(average_mutual_info_s)
 
+    def mutual_info_score_unflattern_bad(self, labels_true, labels_pred):
+        n_samples, n_features = labels_true.shape
+        
+        # 使用并行计算来计算互信息
+        mi_scores = Parallel(n_jobs=-1)(delayed(mutual_info_score)(labels_true[:, i], labels_pred[:, i]) for i in range(n_features))
+        
+        # 计算平均互信息
+        mi = np.mean(mi_scores)
+        return mi
+    
+    def mutual_info_score_unflattern(self, labels_true, labels_pred):
+        labels_true = labels_true.values if isinstance(labels_true, pd.DataFrame) else labels_true
+        labels_pred = labels_pred.values if isinstance(labels_pred, pd.DataFrame) else labels_pred
+        
+        n_samples, n_features = labels_true.shape
+        
+        # 使用并行计算来计算互信息
+        mi_scores = Parallel(n_jobs=-1)(delayed(mutual_info_score)(labels_true[:, i], labels_pred[:, i]) for i in range(n_features))
+        
+        # 计算平均互信息
+        mi = np.mean(mi_scores)
+        return mi
+
+
     def mutual_info_score_flattern(self,df_A=pd.DataFrame,df_B=pd.DataFrame):    
         data_A = df_A.values
         data_B = df_B.values
@@ -670,7 +695,7 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         # print(f"Mutual Information Score (Flattened): {mi_s}")
         return(mi_s)
 
-    def mutual_info_regression_unflattern(self,df_A=pd.DataFrame,df_B=pd.DataFrame):
+    def mutual_info_regression_unflattern_old(self,df_A=pd.DataFrame,df_B=pd.DataFrame):
         data_A = df_A.values
         data_B = df_B.values
         # 计算互信息
@@ -703,6 +728,37 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         average_mutual_info_r = np.mean(mutual_info_regression_list)
         # print(f"Mutual Information Regression Average: {average_mutual_info_r}")
         return(average_mutual_info_r)
+
+
+    def mutual_info_regression_unflattern(self, df_A=pd.DataFrame, df_B=pd.DataFrame):
+        data_A = df_A.values
+        data_B = df_B.values
+
+        # 获取两个数据集的列数
+        num_columns_A = data_A.shape[1]
+        num_columns_B = data_B.shape[1]
+
+        # 取列数的最小值作为循环的范围
+        min_columns = min(num_columns_A, num_columns_B)
+
+        # 判断哪个数据集的样本数更多，并重复较少的样本数
+        if data_A.shape[0] > data_B.shape[0]:
+            data_B_repeated = np.tile(data_B, (int(np.ceil(data_A.shape[0] / data_B.shape[0])), 1))[:data_A.shape[0], :]
+            data_A_repeated = data_A
+        else:
+            data_A_repeated = np.tile(data_A, (int(np.ceil(data_B.shape[0] / data_A.shape[0])), 1))[:data_B.shape[0], :]
+            data_B_repeated = data_B
+
+        # 使用并行计算来计算互信息
+        mutual_info_regression_list = Parallel(n_jobs=-1)(
+            delayed(mutual_info_regression)(data_A_repeated[:, i].reshape(-1, 1), data_B_repeated[:, i])
+            for i in range(min_columns)
+        )
+
+        # 计算平均互信息
+        average_mutual_info_r = np.mean([mi_r[0] for mi_r in mutual_info_regression_list])
+        return average_mutual_info_r
+
 
     def mutual_info_regression_flattern(self,df_A=pd.DataFrame,df_B=pd.DataFrame):    
         data_A = df_A.values
@@ -1023,29 +1079,29 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         n = len(A_flat)
         return (np.sum(A_flat & ~B_flat) + np.sum(~A_flat & B_flat)) / n
 
-    def Hsim_Distance(self, df_A: pd.DataFrame, df_B: pd.DataFrame):
+    def Hsim_Distance(self, df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
         a = df_A.values.ravel()
         b = df_B.values.ravel()
-        tmp = []
-        result = 0
-        for i in range(min(len(a), len(b))):
-            tmp.append(1.0 / (1 + np.abs(a[i] - b[i])))
+        
+        # 使用 NumPy 的矢量化操作计算距离
+        differences = np.abs(a - b)
+        exp_values = np.exp(-differences)
+        
+        # 计算结果
+        result = np.sum(exp_values) / min(len(a), len(b))
+        return result
 
-        # print(tmp)
-        result = np.sum(tmp) / (min([len(a), len(b)]))
-        return (result)
-
-    def Close_Distance(self, df_A: pd.DataFrame, df_B: pd.DataFrame):
+    def Close_Distance(self, df_A: pd.DataFrame, df_B: pd.DataFrame) -> float:
         a = df_A.values.ravel()
         b = df_B.values.ravel()
-        tmp = []
-        result = 0
-        for i in range(min([len(a), len(b)])):
-            tmp.append(np.power(np.e, -np.abs(a[i] - b[i])))
-
-        # print(tmp)
-        result = np.sum(tmp) / (min([len(a), len(b)]))
-        return (result)
+        
+        # 使用 NumPy 的矢量化操作计算距离
+        differences = np.abs(a - b)
+        exp_values = np.exp(-differences)
+        
+        # 计算结果
+        result = np.sum(exp_values) / min(len(a), len(b))
+        return result
 
 
     def apply_function_to_df_pairs(self):
@@ -1114,12 +1170,12 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         # 创建一个 n x n 的结果矩阵
         results = np.zeros((n, n))
         distance_list = ['mutual_info_score_unflattern',
-                 'mutual_info_score_flattern',
-                 'mutual_info_regression_unflattern',
-                 'mutual_info_regression_flattern',
-                 'calculate_ssim',
-                 'luminance', 'contrast', 'structure',
-                 "Euclidean", "Manhattan", "Chebyshev", 'Minkowski', 'Cosine', 'Correlation', 'Jaccard', 'Dice', 'Kulsinski', 'Rogers-Tanimoto', 'Russell-Rao', 'Sokal-Michener', 'Sokal-Sneath', 'Yule']
+                'mutual_info_score_flattern',
+                'mutual_info_regression_unflattern',
+                'mutual_info_regression_flattern',
+                'calculate_ssim',
+                'luminance', 'contrast', 'structure',
+                "Euclidean", "Manhattan", "Chebyshev", 'Minkowski', 'Cosine', 'Correlation', 'Jaccard', 'Dice', 'Kulsinski', 'Rogers-Tanimoto', 'Russell-Rao', 'Sokal-Michener', 'Sokal-Sneath', 'Yule']
 
         # 使用广播机制计算距离
         for i in range(n):
@@ -1283,9 +1339,9 @@ class CPSVisualizer(QtWidgets.QMainWindow):
     def save_data(self):
         # 保存数据
         DataFileOutput, ok2 = QFileDialog.getSaveFileName(self,
-                                                          'Save Data File','DataFileOutput',
-                                                          'CSV Files (*.csv);;Excel Files (*.xlsx)')  # 数据文件保存输出
-          
+                                                        'Save Data File','DataFileOutput',
+                                                        'CSV Files (*.csv);;Excel Files (*.xlsx)')  # 数据文件保存输出
+        
         if (DataFileOutput != ''):
             if ('csv' in DataFileOutput):
                 self.df.to_csv(DataFileOutput, sep=',', encoding='utf-8')
