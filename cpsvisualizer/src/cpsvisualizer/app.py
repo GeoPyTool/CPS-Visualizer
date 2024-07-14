@@ -617,13 +617,11 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         self.show()
 
     def open_files(self):
-        self.df_list = []  # 初始化一个空列表来存储每个文件的 DataFrame
-
-        self.df_name_list = []
-
         global working_directory 
         file_names, _ = QFileDialog.getOpenFileNames(self, 'Open Files', '', 'CSV Files (*.csv);;Excel Files (*.xls *.xlsx)')
-        if file_names:
+        if file_names:            
+            self.clear_data()
+            self.clear_plot()
             for file_name in file_names:
                 if file_name.endswith('.csv'):
                     df = pd.read_csv(file_name)
@@ -1214,6 +1212,8 @@ class CPSVisualizer(QtWidgets.QMainWindow):
             selected_functions = self.function_selector.selectedItems()
             selected_func = [item.text() for item in selected_functions]
 
+
+
             try:
                 if 'log_transform' in selected_func:
                     tmp_data = self.log_transform(tmp_data)
@@ -1298,8 +1298,10 @@ class CPSVisualizer(QtWidgets.QMainWindow):
             return
         
         # 计算行数和列数
-        cols = math.ceil(math.sqrt(num_selected))
-        rows = math.ceil(num_selected / cols)
+        # cols = math.ceil(math.sqrt(num_selected))
+        # rows = math.ceil(num_selected / cols)        
+        num_subplots = math.ceil(math.sqrt(num_selected)) ** 2  
+        rows = cols = int(math.sqrt(num_subplots))
         
         # 动态创建子图
         for i, text in enumerate(selected_texts):
@@ -1335,9 +1337,10 @@ class CPSVisualizer(QtWidgets.QMainWindow):
             return
         
         # 计算行数和列数
-        cols = math.ceil(math.sqrt(num_selected))
-        rows = math.ceil(num_selected / cols)
-        
+        # cols = math.ceil(math.sqrt(num_selected))
+        # rows = math.ceil(num_selected / cols)        
+        num_subplots = math.ceil(math.sqrt(num_selected)) ** 2  
+        rows = cols = int(math.sqrt(num_subplots))
         # 动态创建子图
         for i, text in enumerate(selected_texts):
             ax = self.fig.add_subplot(rows, cols, i + 1)
@@ -1426,43 +1429,40 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         directory = QFileDialog.getExistingDirectory(None, 'Select Directory')
 
         # 如果没有选择路径，则使用当前工作目录
-        if not directory:
-            directory = working_directory
-        
-        
-        for func in self.distance_function_list:
-            print(func.__name__)
-            compare_selected = func.__name__
-            if compare_selected not in self.result_df_dict:
-                n = len(self.df_list)
-                # 将 DataFrame 转换为 numpy 数组
-                arrays = np.array([df.values.ravel() for df in self.df_list])        
-                # 创建一个 n x n 的结果矩阵
-                results = np.zeros((n, n))
-                # func = getattr(self, compare_selected, None)
-                # 使用广播机制计算距离
-                for i in range(n):
-                    A = arrays[i]
-                    B = arrays[i:]  # 只计算上三角部分
-                    # 使用 numpy 的广播机制计算距离，并将 A 和 b 转换为 DataFrame
-                    distances = np.array([func(pd.DataFrame(A.reshape(self.df_list[i].shape)), pd.DataFrame(b.reshape(self.df_list[i].shape))) for b in B])
-                    results[i, i:] = distances
-                    results[i:, i] = distances  # 对称矩阵    
-                            
-                labels = self.df_name_list
-                result_df = pd.DataFrame(results, index=labels, columns=labels)  
-                self.df = result_df
-                self.result_df_dict[compare_selected] = result_df
-        
-            print(compare_selected)
-            print(self.result_df_dict[compare_selected].round(4))           
-            # 使用函数名作为文件名
-            # result_df.to_csv(f'result_{func.__name__}.csv', sep=',', encoding='utf-8')
-            file_path = os.path.join(directory, f'result_{func.__name__}.csv')
-            try:
-                result_df.to_csv(file_path, sep=',', encoding='utf-8')
-            except Exception:
-                pass
+        if directory:           
+            for func in self.distance_function_list:
+                print(func.__name__)
+                compare_selected = func.__name__
+                if compare_selected not in self.result_df_dict:
+                    n = len(self.df_list)
+                    # 将 DataFrame 转换为 numpy 数组
+                    arrays = np.array([df.values.ravel() for df in self.df_list])        
+                    # 创建一个 n x n 的结果矩阵
+                    results = np.zeros((n, n))
+                    # func = getattr(self, compare_selected, None)
+                    # 使用广播机制计算距离
+                    for i in range(n):
+                        A = arrays[i]
+                        B = arrays[i:]  # 只计算上三角部分
+                        # 使用 numpy 的广播机制计算距离，并将 A 和 b 转换为 DataFrame
+                        distances = np.array([func(pd.DataFrame(A.reshape(self.df_list[i].shape)), pd.DataFrame(b.reshape(self.df_list[i].shape))) for b in B])
+                        results[i, i:] = distances
+                        results[i:, i] = distances  # 对称矩阵    
+                                
+                    labels = self.df_name_list
+                    result_df = pd.DataFrame(results, index=labels, columns=labels)  
+                    self.df = result_df
+                    self.result_df_dict[compare_selected] = result_df
+            
+                print(compare_selected)
+                print(self.result_df_dict[compare_selected].round(4))           
+                # 使用函数名作为文件名
+                # result_df.to_csv(f'result_{func.__name__}.csv', sep=',', encoding='utf-8')
+                file_path = os.path.join(directory, f'result_{func.__name__}.csv')
+                try:
+                    result_df.to_csv(file_path, sep=',', encoding='utf-8')
+                except Exception:
+                    pass
 
 
     def calc_all_old(self):       
