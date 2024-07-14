@@ -1352,7 +1352,7 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         # 创建一个 n x n 的结果矩阵
         results = np.zeros((n, n))
         # 使用广播机制计算距离
-        distance_function_list = [self.eculidean, self.manhattan, self.chebyshev, self.minkowski, self.cosine, self.correlation, self.jaccard, self.dice, self.kulsinski, self.rogers_tanimoto, self.russell_rao, self.sokal_michener, self.sokal_sneath, self.yule]
+        distance_function_list = [self.Euclidean, self.Manhattan, self.Chebyshev, self.Minkowski, self.Cosine, self.Correlation, self.Jaccard, self.Dice, self.Kulsinski, self.Rogers_Tanimoto, self.Russell_Rao, self.Sokal_Michener, self.Sokal_sneath, self.Yule,self.mutual_info_regression_flattern,self.mutual_info_regression_unflattern,self.mutual_info_score_flattern,self.mutual_info_score_unflattern,self.calculate_ssim,self.luminance,self.contrast,self.structure,self.Hsim_Distance,self.Close_Distance]
         for func in distance_function_list:
             for i in range(n):
                 A = arrays[i]
