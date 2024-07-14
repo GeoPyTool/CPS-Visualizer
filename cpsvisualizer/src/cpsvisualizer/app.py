@@ -5,21 +5,24 @@ import importlib.metadata
 import sys
 import warnings
 warnings.filterwarnings("ignore")
-from PySide6 import QtWidgets
-import json
-import pickle
-import sqlite3
-import sys
-import re
-import os
-import numpy as np
+import glob
+import importlib.metadata
 import itertools
+import json
 import math
-
-from joblib import Parallel, delayed
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
+import numpy as np
+import os
+import pandas as pd
+import pickle
+import re
+import sqlite3
+import sys
+import warnings
+
+
 from matplotlib.font_manager import FontProperties
 from matplotlib.path import Path
 from matplotlib.patches import ConnectionStyle, Polygon
@@ -27,46 +30,35 @@ from matplotlib.collections import PatchCollection
 from matplotlib import collections
 from matplotlib.ticker import FuncFormatter
 from matplotlib.ticker import MaxNLocator
+
+
+from joblib import Parallel, delayed
 try:
     from importlib import metadata as importlib_metadata
 except ImportError:
     # Backwards compatibility - importlib.metadata was added in Python 3.8
     import importlib_metadata
 
-from PySide6.QtGui import QAction, QGuiApplication
-from PySide6.QtWidgets import QComboBox,QAbstractItemView, QHBoxLayout, QLabel, QMainWindow, QApplication, QMenu, QSizePolicy, QWidget, QToolBar, QFileDialog, QTableView, QVBoxLayout, QHBoxLayout, QWidget, QSlider,  QGroupBox , QLabel , QWidgetAction, QPushButton, QSizePolicy, QMessageBox
-from PySide6.QtWidgets import QListWidget, QListWidgetItem, QLabel
-from PySide6.QtCore import QAbstractTableModel, QModelIndex, QVariantAnimation, Qt
 
-from PySide6.QtWidgets import QComboBox, QListWidget, QListWidgetItem, QCheckBox, QStyledItemDelegate, QVBoxLayout, QWidget, QApplication
-from PySide6.QtCore import Qt, Signal
+from PySide6 import QtWidgets
+from PySide6.QtGui import QAction, QGuiApplication
+from PySide6.QtWidgets import QComboBox,QAbstractItemView, QHBoxLayout, QLabel, QMainWindow, QApplication, QMenu, QWidget, QToolBar, QFileDialog, QTableView, QVBoxLayout, QHBoxLayout, QWidget, QSlider,  QGroupBox , QLabel , QWidgetAction, QPushButton, QSizePolicy, QMessageBox,QListWidget, QListWidgetItem, QLabel, QListWidget, QListWidgetItem, QCheckBox, QStyledItemDelegate, QVBoxLayout, QWidget, QApplication
+
+from PySide6.QtCore import QAbstractTableModel, QModelIndex, QVariantAnimation, Qt, Signal
+
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-import pandas as pd
-from PySide6.QtGui import QGuiApplication
 
-from PySide6.QtCore import QAbstractTableModel, Qt, QModelIndex
-
+from scipy.ndimage import sobel
 from scipy.stats import gmean
-
 from sklearn.metrics import mutual_info_score
 from sklearn.feature_selection import mutual_info_regression
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
-import os
-import pandas as pd
-import glob
-import numpy as np
-import matplotlib.pyplot as plt
-import numpy as np
-import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
-from scipy.ndimage import sobel
 from skimage import feature
 from skimage.metrics import structural_similarity as ssim
-import numpy as np
-import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from skimage.filters import threshold_otsu, threshold_local
 from skimage import exposure
@@ -462,7 +454,7 @@ class MultiSelectComboBox(QComboBox):
         return [self.list_widget.item(i).text() for i in range(self.list_widget.count()) if self.list_widget.item(i).checkState() == Qt.Checked]
 
 
-class CPSVisualizer(QtWidgets.QMainWindow):
+class CPSVisualizer(QMainWindow):
     def __init__(self, parent=None):
         QMainWindow.__init__(self, parent)
         self.init_data()
@@ -619,7 +611,8 @@ class CPSVisualizer(QtWidgets.QMainWindow):
     def open_files(self):
         global working_directory 
         file_names, _ = QFileDialog.getOpenFileNames(self, 'Open Files', '', 'CSV Files (*.csv);;Excel Files (*.xls *.xlsx)')
-        if file_names:            
+        if file_names:
+            
             self.clear_data()
             self.clear_plot()
             for file_name in file_names:
@@ -1218,31 +1211,31 @@ class CPSVisualizer(QtWidgets.QMainWindow):
                 if 'log_transform' in selected_func:
                     tmp_data = self.log_transform(tmp_data)
             except Exception as e:
-                QMessageBox.critical(None, "Error", f"Log Transform failed: {e}")
+                QMessageBox.critical(None, self.df_name_list[index] + " Error", f"Log Transform failed: {e}")
 
             try:
                 if 'centering_transform' in selected_func:
                     tmp_data = self.centering_transform(tmp_data)
             except Exception as e:
-                QMessageBox.critical(None, "Error", f"Centering Transform failed: {e}")
+                QMessageBox.critical(None, self.df_name_list[index] + " Error", f"Centering Transform failed: {e}")
 
             try:
                 if 'z_score_normalization' in selected_func:
                     tmp_data = self.z_score_normalization(tmp_data)
             except Exception as e:
-                QMessageBox.critical(None, "Error", f"Z-Score Normalization failed: {e}")
+                QMessageBox.critical(None, self.df_name_list[index] + " Error", f"Z-Score Normalization failed: {e}")
 
             try:
                 if 'standardize' in selected_func:
                     tmp_data = self.standardize(tmp_data)
             except Exception as e:
-                QMessageBox.critical(None, "Error", f"Standardization failed: {e}")
+                QMessageBox.critical(None, self.df_name_list[index] + " Error", f"Standardization failed: {e}")
 
             try:
                 if 'equalize_hist' in selected_func:
                     tmp_data = self.equalize_hist(tmp_data)
             except Exception as e:
-                QMessageBox.critical(None, "Error", f"Histogram Equalization failed: {e}")
+                QMessageBox.critical(None, self.df_name_list[index] + " Error", f"Histogram Equalization failed: {e}")
             ax.imshow(tmp_data, cmap='gray', aspect='auto')
             ax.set_title(text)  # 设置小标题
         
@@ -1357,31 +1350,31 @@ class CPSVisualizer(QtWidgets.QMainWindow):
                 if 'log_transform' in selected_func:
                     tmp_data = self.log_transform(tmp_data)
             except Exception as e:
-                QMessageBox.critical(None, "Error", f"Log Transform failed: {e}")
+                QMessageBox.critical(None, self.df_name_list[index] + " Error", f"Log Transform failed: {e}")
 
             try:
                 if 'centering_transform' in selected_func:
                     tmp_data = self.centering_transform(tmp_data)
             except Exception as e:
-                QMessageBox.critical(None, "Error", f"Centering Transform failed: {e}")
+                QMessageBox.critical(None, self.df_name_list[index] + " Error", f"Centering Transform failed: {e}")
 
             try:
                 if 'z_score_normalization' in selected_func:
                     tmp_data = self.z_score_normalization(tmp_data)
             except Exception as e:
-                QMessageBox.critical(None, "Error", f"Z-Score Normalization failed: {e}")
+                QMessageBox.critical(None, self.df_name_list[index] + " Error", f"Z-Score Normalization failed: {e}")
 
             try:
                 if 'standardize' in selected_func:
                     tmp_data = self.standardize(tmp_data)
             except Exception as e:
-                QMessageBox.critical(None, "Error", f"Standardization failed: {e}")
+                QMessageBox.critical(None, self.df_name_list[index] + " Error", f"Standardization failed: {e}")
 
             try:
                 if 'equalize_hist' in selected_func:
                     tmp_data = self.equalize_hist(tmp_data)
             except Exception as e:
-                QMessageBox.critical(None, "Error", f"Histogram Equalization failed: {e}")
+                QMessageBox.critical(None, self.df_name_list[index] + " Error", f"Histogram Equalization failed: {e}")
             ax.imshow(tmp_data, cmap='gray', aspect='auto')
             ax.set_title(text)  # 设置小标题
         
@@ -1417,8 +1410,8 @@ class CPSVisualizer(QtWidgets.QMainWindow):
             self.df = result_df
             self.result_df_dict[compare_selected] = result_df
         
-        print(compare_selected)
-        print(self.result_df_dict[compare_selected].round(4))
+        # print(compare_selected)
+        # print(self.result_df_dict[compare_selected].round(4))
         model = PandasModel(self.result_df_dict[compare_selected].round(4))
         self.table.setModel(model)
 
@@ -1431,7 +1424,7 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         # 如果没有选择路径，则使用当前工作目录
         if directory:           
             for func in self.distance_function_list:
-                print(func.__name__)
+                # print(func.__name__)
                 compare_selected = func.__name__
                 if compare_selected not in self.result_df_dict:
                     n = len(self.df_list)
@@ -1454,8 +1447,8 @@ class CPSVisualizer(QtWidgets.QMainWindow):
                     self.df = result_df
                     self.result_df_dict[compare_selected] = result_df
             
-                print(compare_selected)
-                print(self.result_df_dict[compare_selected].round(4))           
+                # print(compare_selected)
+                # print(self.result_df_dict[compare_selected].round(4))           
                 # 使用函数名作为文件名
                 # result_df.to_csv(f'result_{func.__name__}.csv', sep=',', encoding='utf-8')
                 file_path = os.path.join(directory, f'result_{func.__name__}.csv')
@@ -1481,7 +1474,7 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         # 使用广播机制计算距离
 
         for func in self.distance_function_list:
-            print(func.__name__)
+            # print(func.__name__)
             for i in range(n):
                 A = arrays[i]
                 B = arrays[i:]  # 只计算上三角部分
@@ -1492,7 +1485,7 @@ class CPSVisualizer(QtWidgets.QMainWindow):
             labels = self.df_name_list
             result_df = pd.DataFrame(results, index=labels, columns=labels)  
             self.result_df_dict[func.__name__] = result_df
-            print(result_df.round(4))
+            # print(result_df.round(4))
             # 使用函数名作为文件名
             # result_df.to_csv(f'result_{func.__name__}.csv', sep=',', encoding='utf-8')
             file_path = os.path.join(directory, f'result_{func.__name__}.csv')
@@ -1516,9 +1509,9 @@ def main():
     # Retrieve the app's metadata
     metadata = importlib.metadata.metadata(app_module)
 
-    QtWidgets.QApplication.setApplicationName(metadata["Formal-Name"])
+    QApplication.setApplicationName(metadata["Formal-Name"])
 
-    app = QtWidgets.QApplication(sys.argv)
+    app = QApplication(sys.argv)
     main_window = CPSVisualizer()
     sys.exit(app.exec())
 
