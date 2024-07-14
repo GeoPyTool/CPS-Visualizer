@@ -471,18 +471,24 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         self.dpi = 50
         self.df = pd.DataFrame()    
         self.df_list=[]
+        self.result_df_dict={}
         self.df_name_list = []
         self.function_list = ["log_transform","centering_transform","z_score_normalization","standardize","equalize_hist"]
-        self.distance_list = ["","Euclidean", "Manhattan", "Chebyshev", 'Minkowski', 
-                 'Cosine', 'Correlation', 'Jaccard', 'Dice', 
-                 'Kulsinski', 'Rogers-Tanimoto', 'Russell-Rao', 
-                 'Sokal-Michener', 'Sokal-Sneath', 'Yule',
-                 'Hsim_Distance','Close_Distance',
-                 'mutual_info_score_unflattern',
-                 'mutual_info_score_flattern',
-                 'mutual_info_regression_unflattern',
-                 'mutual_info_regression_flattern',
-                 'calculate_ssim', 'luminance', 'contrast', 'structure',]
+        # self.distance_list = ["","Euclidean", "Manhattan", "Chebyshev", 'Minkowski', 
+        #          'Cosine', 'Correlation', 'Jaccard', 'Dice', 
+        #          'Kulsinski', 'Rogers-Tanimoto', 'Russell-Rao', 
+        #          'Sokal-Michener', 'Sokal-Sneath', 'Yule',
+        #          'Hsim_Distance','Close_Distance',
+        #          'mutual_info_score_unflattern',
+        #          'mutual_info_score_flattern',
+        #          'mutual_info_regression_unflattern',
+        #          'mutual_info_regression_flattern',
+        #          'calculate_ssim', 'luminance', 'contrast', 'structure',]
+        
+        self.distance_function_list = [self.blank,self.Euclidean, self.Manhattan, self.Chebyshev, self.Minkowski, self.Cosine, self.Correlation, self.Jaccard, self.Dice, self.Kulsinski, self.Rogers_Tanimoto, self.Russell_Rao, self.Sokal_Michener, self.Sokal_Sneath, self.Yule,self.mutual_info_regression_flattern,self.mutual_info_regression_unflattern,self.mutual_info_score_flattern,self.mutual_info_score_unflattern,self.calculate_ssim,self.luminance,self.contrast,self.structure,self.Hsim_Distance,self.Close_Distance]
+        
+        # 将函数列表转换为函数名的文本列表
+        self.distance_list = [func.__name__ for func in self.distance_function_list]
         self.plot_flag = 'Select Data'
 
     def init_ui(self):
@@ -572,7 +578,7 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         self.Compare_selector = QComboBox(self)
         self.Compare_selector.addItems(self.distance_list)
         # self.Compare_selector.setSelectionMode(QListWidget.MultiSelection)
-        self.Compare_selector.currentTextChanged.connect(self.apply_function_to_df_pairs)
+        self.Compare_selector.currentTextChanged.connect(self.calc_selected)
 
         self.toolbar.addWidget(spacer) # Add a separator before the first switch
         # 创建一个表格视图
@@ -634,7 +640,7 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         # model = PandasModel(self.df)
         # self.table.setModel(model) 
 
-        self.apply_function_to_df_pairs()
+        self.calc_selected()
 
     def clean_tmp_name(self,tmp_name):
         # Remove the extension
@@ -1156,7 +1162,8 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         self.df = pd.DataFrame()
         self.table.setModel(PandasModel(self.df))
         self.df_list=[]
-        self.df_name_list = []
+        self.df_name_list = []        
+        self.result_df_dict={}
         # 清空图表
         self.canvas.figure.clear()
         self.canvas.draw()
@@ -1172,6 +1179,8 @@ class CPSVisualizer(QtWidgets.QMainWindow):
 
 
     def plot_data(self):
+        # 自动排列成正方形比例
+        # 2024年7月14日进度
         self.plot_flag = 'Select Data'
         # 清除之前的图像
         self.canvas.figure.clear()
@@ -1187,8 +1196,11 @@ class CPSVisualizer(QtWidgets.QMainWindow):
             return
         
         # 计算行数和列数
-        cols = math.ceil(math.sqrt(num_selected))
-        rows = math.ceil(num_selected / cols)
+        # cols = math.ceil(math.sqrt(num_selected))
+        # rows = math.ceil(num_selected / cols)
+
+        num_subplots = math.ceil(math.sqrt(num_selected)) ** 2  
+        rows = cols = int(math.sqrt(num_subplots))
         
         # 动态创建子图
         for i, text in enumerate(selected_texts):
@@ -1263,101 +1275,13 @@ class CPSVisualizer(QtWidgets.QMainWindow):
                 # print(f"Failed to save figure: {e}")
                 pass
 
-    def apply_function_to_df_pairs(self):
-        n = len(self.df_list)
-        # 将 DataFrame 转换为 numpy 数组
-        arrays = np.array([df.values.ravel() for df in self.df_list])        
-        # 创建一个 n x n 的结果矩阵
-        results = np.zeros((n, n))
-        distance_list = ['mutual_info_score_unflattern',
-                'mutual_info_score_flattern',
-                'mutual_info_regression_unflattern',
-                'mutual_info_regression_flattern',
-                'calculate_ssim',
-                'luminance', 'contrast', 'structure',
-                "Euclidean", "Manhattan", "Chebyshev", 'Minkowski', 'Cosine', 'Correlation', 'Jaccard', 'Dice', 'Kulsinski', 'Rogers-Tanimoto', 'Russell-Rao', 'Sokal-Michener', 'Sokal-Sneath', 'Yule']
-
-        # 使用广播机制计算距离
-        for i in range(n):
-            A = arrays[i]
-            B = arrays[i:]  # 只计算上三角部分
-            compare_selected = self.Compare_selector.currentText()
-            if compare_selected == 'mutual_info_score_unflattern':
-                func = self.mutual_info_score_unflattern
-            elif compare_selected == 'mutual_info_score_flattern':
-                func = self.mutual_info_score_flattern
-            elif compare_selected == 'mutual_info_regression_unflattern':
-                func = self.mutual_info_regression_unflattern
-            elif compare_selected == 'mutual_info_regression_flattern':
-                func = self.mutual_info_regression_flattern
-            elif compare_selected == 'calculate_ssim':
-                func = self.calculate_ssim
-            elif compare_selected == 'luminance':
-                func = self.luminance
-            elif compare_selected == 'contrast':
-                func = self.contrast
-            elif compare_selected == 'structure':
-                func = self.structure
-            elif compare_selected == 'Euclidean':
-                func = self.Euclidean
-            elif compare_selected == 'Manhattan':
-                func = self.Manhattan
-            elif compare_selected == 'Chebyshev':
-                func = self.Chebyshev
-            elif compare_selected == 'Minkowski':
-                func = self.Minkowski
-            elif compare_selected == 'Cosine':
-                func = self.Cosine
-            elif compare_selected == 'Correlation':
-                func = self.Correlation
-            elif compare_selected == 'Jaccard':
-                func = self.Jaccard
-            elif compare_selected == 'Dice':
-                func = self.Dice
-            elif compare_selected == 'Kulsinski':
-                func = self.Kulsinski
-            elif compare_selected == 'Rogers_Tanimoto':
-                func = self.Rogers_Tanimoto
-            elif compare_selected == 'Russell_Rao':
-                func = self.Russell_Rao
-            elif compare_selected == 'Sokal_Michener':
-                func = self.Sokal_Michener
-            elif compare_selected == 'Sokal_Sneath':
-                func = self.Sokal_Sneath
-            elif compare_selected == 'Yule':
-                func = self.Yule
-            elif compare_selected == 'Hsim_Distance':
-                func = self.Hsim_Distance
-            elif compare_selected == 'Close_Distance':
-                func = self.Close_Distance
-            else:
-                func = self.fun
-
-            # distances = np.array([func(A, b) for b in B])
-            # results[i, i:] = distances
-            # results[i:, i] = distances  # 对称矩阵
-
-            # 使用广播机制计算距离
-            for i in range(n):
-                A = arrays[i]
-                B = arrays[i:]  # 只计算上三角部分
-                # 使用 numpy 的广播机制计算距离，并将 A 和 b 转换为 DataFrame
-                distances = np.array([func(pd.DataFrame(A.reshape(self.df_list[i].shape)), pd.DataFrame(b.reshape(self.df_list[i].shape))) for b in B])
-                results[i, i:] = distances
-                results[i:, i] = distances  # 对称矩阵
-    
-        
-        
-        labels = self.df_name_list
-        result_df = pd.DataFrame(results, index=labels, columns=labels)  
-        self.df = result_df
-        model = PandasModel(self.df.round(4))
-        self.table.setModel(model)
-
     # Assuming `fun` is a function that takes two DataFrames and returns a value
     def fun(self, df1, df2):
         # Example function: return the sum of the shapes of the two DataFrames
         return df1.shape[0] + df2.shape[0]
+
+    def blank(self, df1, df2):
+        return 0
 
  
     def plot_all_log_equal(self):
@@ -1465,9 +1389,83 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         self.canvas.figure.clear()
         self.canvas.draw()
 
-    def calc_all(self):
-        
 
+    def calc_selected(self):           
+        # 获取选择的距离函数，然后逐对计算距离
+        compare_selected = self.Compare_selector.currentText() 
+        if compare_selected not in self.result_df_dict:
+            n = len(self.df_list)
+            # 将 DataFrame 转换为 numpy 数组
+            arrays = np.array([df.values.ravel() for df in self.df_list])        
+            # 创建一个 n x n 的结果矩阵
+            results = np.zeros((n, n))
+            func = getattr(self, compare_selected, None)
+            # 使用广播机制计算距离
+            for i in range(n):
+                A = arrays[i]
+                B = arrays[i:]  # 只计算上三角部分
+                # 使用 numpy 的广播机制计算距离，并将 A 和 b 转换为 DataFrame
+                distances = np.array([func(pd.DataFrame(A.reshape(self.df_list[i].shape)), pd.DataFrame(b.reshape(self.df_list[i].shape))) for b in B])
+                results[i, i:] = distances
+                results[i:, i] = distances  # 对称矩阵    
+                        
+            labels = self.df_name_list
+            result_df = pd.DataFrame(results, index=labels, columns=labels)  
+            self.df = result_df
+            self.result_df_dict[compare_selected] = result_df
+        
+        print(compare_selected)
+        print(self.result_df_dict[compare_selected].round(4))
+        model = PandasModel(self.result_df_dict[compare_selected].round(4))
+        self.table.setModel(model)
+
+
+    def calc_all(self):       
+        # 针对全部离函数，然后逐对计算距离
+        # 弹出路径选择对话框
+        directory = QFileDialog.getExistingDirectory(None, 'Select Directory')
+
+        # 如果没有选择路径，则使用当前工作目录
+        if not directory:
+            directory = working_directory
+        
+        
+        for func in self.distance_function_list:
+            print(func.__name__)
+            compare_selected = func.__name__
+            if compare_selected not in self.result_df_dict:
+                n = len(self.df_list)
+                # 将 DataFrame 转换为 numpy 数组
+                arrays = np.array([df.values.ravel() for df in self.df_list])        
+                # 创建一个 n x n 的结果矩阵
+                results = np.zeros((n, n))
+                # func = getattr(self, compare_selected, None)
+                # 使用广播机制计算距离
+                for i in range(n):
+                    A = arrays[i]
+                    B = arrays[i:]  # 只计算上三角部分
+                    # 使用 numpy 的广播机制计算距离，并将 A 和 b 转换为 DataFrame
+                    distances = np.array([func(pd.DataFrame(A.reshape(self.df_list[i].shape)), pd.DataFrame(b.reshape(self.df_list[i].shape))) for b in B])
+                    results[i, i:] = distances
+                    results[i:, i] = distances  # 对称矩阵    
+                            
+                labels = self.df_name_list
+                result_df = pd.DataFrame(results, index=labels, columns=labels)  
+                self.df = result_df
+                self.result_df_dict[compare_selected] = result_df
+        
+            print(compare_selected)
+            print(self.result_df_dict[compare_selected].round(4))           
+            # 使用函数名作为文件名
+            # result_df.to_csv(f'result_{func.__name__}.csv', sep=',', encoding='utf-8')
+            file_path = os.path.join(directory, f'result_{func.__name__}.csv')
+            try:
+                result_df.to_csv(file_path, sep=',', encoding='utf-8')
+            except Exception:
+                pass
+
+
+    def calc_all_old(self):       
         # 弹出路径选择对话框
         directory = QFileDialog.getExistingDirectory(None, 'Select Directory')
 
@@ -1481,9 +1479,9 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         # 创建一个 n x n 的结果矩阵
         results = np.zeros((n, n))
         # 使用广播机制计算距离
-        distance_function_list = [self.Euclidean, self.Manhattan, self.Chebyshev, self.Minkowski, self.Cosine, self.Correlation, self.Jaccard, self.Dice, self.Kulsinski, self.Rogers_Tanimoto, self.Russell_Rao, self.Sokal_Michener, self.Sokal_Sneath, self.Yule,self.mutual_info_regression_flattern,self.mutual_info_regression_unflattern,self.mutual_info_score_flattern,self.mutual_info_score_unflattern,self.calculate_ssim,self.luminance,self.contrast,self.structure,self.Hsim_Distance,self.Close_Distance]
 
-        for func in distance_function_list:
+        for func in self.distance_function_list:
+            print(func.__name__)
             for i in range(n):
                 A = arrays[i]
                 B = arrays[i:]  # 只计算上三角部分
@@ -1493,6 +1491,8 @@ class CPSVisualizer(QtWidgets.QMainWindow):
                 results[i:, i] = distances  # 对称矩阵
             labels = self.df_name_list
             result_df = pd.DataFrame(results, index=labels, columns=labels)  
+            self.result_df_dict[func.__name__] = result_df
+            print(result_df.round(4))
             # 使用函数名作为文件名
             # result_df.to_csv(f'result_{func.__name__}.csv', sep=',', encoding='utf-8')
             file_path = os.path.join(directory, f'result_{func.__name__}.csv')
@@ -1500,8 +1500,6 @@ class CPSVisualizer(QtWidgets.QMainWindow):
                 result_df.to_csv(file_path, sep=',', encoding='utf-8')
             except Exception:
                 pass
-
-       # 2024年7月14日进度
     
 def main():
     # Linux desktop environments use an app's .desktop file to integrate the app
