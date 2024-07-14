@@ -534,6 +534,12 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         save_plot_action.triggered.connect(self.save_plot)
         self.toolbar.addAction(save_plot_action)
 
+        # 在工具栏中添加一个 Whole Process action
+        whole_process_action = QAction('Whole Process', self)
+        whole_process_action.setShortcut('Ctrl+W')
+        whole_process_action.triggered.connect(self.whole_process)
+        self.toolbar.addAction(whole_process_action)
+
         # 选择数据列表
         self.data_label = QLabel('Select Data')
         self.data_selector = QListWidget(self)
@@ -1111,163 +1117,33 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         result = np.sum(exp_values) / min(len(a), len(b))
         return result
 
+    def log_transform(self, data):
+        return np.log1p(data)
 
-    def apply_function_to_df_pairs(self):
-        n = len(self.df_list)
-        result = [[None for _ in range(n)] for _ in range(n)]
-        
-        # for i, df1 in enumerate(self.df_list):
-        #     for j, df2 in enumerate(self.df_list):
-        #         compare_selected = self.Compare_selector.currentText()
-        #         if compare_selected == 'mutual_info_score_unflattern':
-        #             result[i][j] = self.mutual_info_score_unflattern(df1, df2)
-        #         elif compare_selected == 'mutual_info_score_flattern':
-        #             result[i][j] = self.mutual_info_score_flattern(df1, df2)
-        #         elif compare_selected == 'mutual_info_regression_unflattern':
-        #             result[i][j] = self.mutual_info_regression_unflattern(df1, df2)
-        #         elif compare_selected == 'mutual_info_regression_flattern':
-        #             result[i][j] = self.mutual_info_regression_flattern(df1, df2)
-        #         elif compare_selected == 'calculate_ssim':
-        #             result[i][j] = self.calculate_ssim(df1, df2)
-        #         elif compare_selected == 'calculate_ssim_components':
-        #             result[i][j] = self.calculate_ssim_components(df1, df2)
-        #         elif compare_selected == 'luminance':
-        #             result[i][j] = self.luminance(df1, df2)
-        #         elif compare_selected == 'contrast':
-        #             result[i][j] = self.contrast(df1, df2)
-        #         elif compare_selected == 'structure':
-        #             result[i][j] = self.structure(df1, df2)
-        #         elif compare_selected == 'Euclidean':
-        #             result[i][j] = self.Euclidean(df1, df2)
-        #         elif compare_selected == 'Manhattan':
-        #             result[i][j] = self.Manhattan(df1, df2)
-        #         elif compare_selected == 'Chebyshev':
-        #             result[i][j] = self.Chebyshev(df1, df2)
-        #         elif compare_selected == 'Minkowski':
-        #             result[i][j] = self.Minkowski(df1, df2)
-        #         elif compare_selected == 'Cosine':
-        #             result[i][j] = self.Cosine(df1, df2)
-        #         elif compare_selected == 'Correlation':
-        #             result[i][j] = self.Correlation(df1, df2)
-        #         elif compare_selected == 'Jaccard':
-        #             result[i][j] = self.Jaccard(df1, df2)
-        #         elif compare_selected == 'Dice':
-        #             result[i][j] = self.Dice(df1, df2)
-        #         elif compare_selected == 'Kulsinski':
-        #             result[i][j] = self.Kulsinski(df1, df2)
-        #         elif compare_selected == 'Rogers_Tanimoto':
-        #             result[i][j] = self.Rogers_Tanimoto(df1, df2)
-        #         elif compare_selected == 'Russell_Rao':
-        #             result[i][j] = self.Russell_Rao(df1, df2)
-        #         elif compare_selected == 'Sokal_Michener':
-        #             result[i][j] = self.Sokal_Michener(df1, df2)
-        #         elif compare_selected == 'Sokal_Sneath':
-        #             result[i][j] = self.Sokal_Sneath(df1, df2)
-        #         elif compare_selected == 'Yule':
-        #             result[i][j] = self.Yule(df1, df2)
-        #         elif compare_selected == 'Hsim_Distance':
-        #             result[i][j] = self.Hsim_Distance(df1, df2)
-        #         elif compare_selected == 'Close_Distance':
-        #             result[i][j] = self.Close_Distance(df1, df2)
-        #         else:
-        #             result[i][j] = self.fun(df1, df2)
+    def log_centering_transform(self, data):
+        # 对数据进行对数变换
+        log_data = np.log1p(data)  # 使用log1p避免log(0)的问题
 
-        # 将 DataFrame 转换为 numpy 数组
-        arrays = np.array([df.values.ravel() for df in self.df_list])
-        
-        # 创建一个 n x n 的结果矩阵
-        results = np.zeros((n, n))
-        distance_list = ['mutual_info_score_unflattern',
-                'mutual_info_score_flattern',
-                'mutual_info_regression_unflattern',
-                'mutual_info_regression_flattern',
-                'calculate_ssim',
-                'luminance', 'contrast', 'structure',
-                "Euclidean", "Manhattan", "Chebyshev", 'Minkowski', 'Cosine', 'Correlation', 'Jaccard', 'Dice', 'Kulsinski', 'Rogers-Tanimoto', 'Russell-Rao', 'Sokal-Michener', 'Sokal-Sneath', 'Yule']
+        # 对变换后的数据进行中心化处理
+        centered_log_data = log_data - np.mean(log_data, axis=0)
 
-        # 使用广播机制计算距离
-        for i in range(n):
-            A = arrays[i]
-            B = arrays[i:]  # 只计算上三角部分
-            compare_selected = self.Compare_selector.currentText()
-            if compare_selected == 'mutual_info_score_unflattern':
-                func = self.mutual_info_score_unflattern
-            elif compare_selected == 'mutual_info_score_flattern':
-                func = self.mutual_info_score_flattern
-            elif compare_selected == 'mutual_info_regression_unflattern':
-                func = self.mutual_info_regression_unflattern
-            elif compare_selected == 'mutual_info_regression_flattern':
-                func = self.mutual_info_regression_flattern
-            elif compare_selected == 'calculate_ssim':
-                func = self.calculate_ssim
-            elif compare_selected == 'luminance':
-                func = self.luminance
-            elif compare_selected == 'contrast':
-                func = self.contrast
-            elif compare_selected == 'structure':
-                func = self.structure
-            elif compare_selected == 'Euclidean':
-                func = self.Euclidean
-            elif compare_selected == 'Manhattan':
-                func = self.Manhattan
-            elif compare_selected == 'Chebyshev':
-                func = self.Chebyshev
-            elif compare_selected == 'Minkowski':
-                func = self.Minkowski
-            elif compare_selected == 'Cosine':
-                func = self.Cosine
-            elif compare_selected == 'Correlation':
-                func = self.Correlation
-            elif compare_selected == 'Jaccard':
-                func = self.Jaccard
-            elif compare_selected == 'Dice':
-                func = self.Dice
-            elif compare_selected == 'Kulsinski':
-                func = self.Kulsinski
-            elif compare_selected == 'Rogers_Tanimoto':
-                func = self.Rogers_Tanimoto
-            elif compare_selected == 'Russell_Rao':
-                func = self.Russell_Rao
-            elif compare_selected == 'Sokal_Michener':
-                func = self.Sokal_Michener
-            elif compare_selected == 'Sokal_Sneath':
-                func = self.Sokal_Sneath
-            elif compare_selected == 'Yule':
-                func = self.Yule
-            elif compare_selected == 'Hsim_Distance':
-                func = self.Hsim_Distance
-            elif compare_selected == 'Close_Distance':
-                func = self.Close_Distance
-            else:
-                func = self.fun
+        return centered_log_data
 
-            # distances = np.array([func(A, b) for b in B])
-            # results[i, i:] = distances
-            # results[i:, i] = distances  # 对称矩阵
+    def centering_transform(self, data):
+        # 中心化处理
+        centered_log_data = data - np.mean(data, axis=0)
+        return centered_log_data
 
-            # 使用广播机制计算距离
-            for i in range(n):
-                A = arrays[i]
-                B = arrays[i:]  # 只计算上三角部分
-                # 使用 numpy 的广播机制计算距离，并将 A 和 b 转换为 DataFrame
-                distances = np.array([func(pd.DataFrame(A.reshape(self.df_list[i].shape)), pd.DataFrame(b.reshape(self.df_list[i].shape))) for b in B])
-                results[i, i:] = distances
-                results[i:, i] = distances  # 对称矩阵
-    
-        
-        
-        labels = self.df_name_list
-        result_df = pd.DataFrame(results, index=labels, columns=labels)  
-        self.df = result_df
-        model = PandasModel(self.df.round(4))
-        self.table.setModel(model)
+    def z_score_normalization(self, data):
+        return (data - np.mean(data, axis=0)) / np.std(data, axis=0)
 
-    # Example usage:
-    # 2024年7月10日进度
-    # Assuming `fun` is a function that takes two DataFrames and returns a value
-    def fun(self, df1, df2):
-        # Example function: return the sum of the shapes of the two DataFrames
-        return df1.shape[0] + df2.shape[0]
+    def standardize(self, data):
+        scaler = StandardScaler()
+        return scaler.fit_transform(data)
+
+    def equalize_hist(self, data):
+        return exposure.equalize_hist(data)
+
 
     def clear_data(self):
         # 清空数据
@@ -1371,35 +1247,127 @@ class CPSVisualizer(QtWidgets.QMainWindow):
                 # print(f"Failed to save figure: {e}")
                 pass
 
+    def apply_function_to_df_pairs(self):
+        n = len(self.df_list)
+        # 将 DataFrame 转换为 numpy 数组
+        arrays = np.array([df.values.ravel() for df in self.df_list])        
+        # 创建一个 n x n 的结果矩阵
+        results = np.zeros((n, n))
+        distance_list = ['mutual_info_score_unflattern',
+                'mutual_info_score_flattern',
+                'mutual_info_regression_unflattern',
+                'mutual_info_regression_flattern',
+                'calculate_ssim',
+                'luminance', 'contrast', 'structure',
+                "Euclidean", "Manhattan", "Chebyshev", 'Minkowski', 'Cosine', 'Correlation', 'Jaccard', 'Dice', 'Kulsinski', 'Rogers-Tanimoto', 'Russell-Rao', 'Sokal-Michener', 'Sokal-Sneath', 'Yule']
 
-    def log_transform(self, data):
-        return np.log1p(data)
+        # 使用广播机制计算距离
+        for i in range(n):
+            A = arrays[i]
+            B = arrays[i:]  # 只计算上三角部分
+            compare_selected = self.Compare_selector.currentText()
+            if compare_selected == 'mutual_info_score_unflattern':
+                func = self.mutual_info_score_unflattern
+            elif compare_selected == 'mutual_info_score_flattern':
+                func = self.mutual_info_score_flattern
+            elif compare_selected == 'mutual_info_regression_unflattern':
+                func = self.mutual_info_regression_unflattern
+            elif compare_selected == 'mutual_info_regression_flattern':
+                func = self.mutual_info_regression_flattern
+            elif compare_selected == 'calculate_ssim':
+                func = self.calculate_ssim
+            elif compare_selected == 'luminance':
+                func = self.luminance
+            elif compare_selected == 'contrast':
+                func = self.contrast
+            elif compare_selected == 'structure':
+                func = self.structure
+            elif compare_selected == 'Euclidean':
+                func = self.Euclidean
+            elif compare_selected == 'Manhattan':
+                func = self.Manhattan
+            elif compare_selected == 'Chebyshev':
+                func = self.Chebyshev
+            elif compare_selected == 'Minkowski':
+                func = self.Minkowski
+            elif compare_selected == 'Cosine':
+                func = self.Cosine
+            elif compare_selected == 'Correlation':
+                func = self.Correlation
+            elif compare_selected == 'Jaccard':
+                func = self.Jaccard
+            elif compare_selected == 'Dice':
+                func = self.Dice
+            elif compare_selected == 'Kulsinski':
+                func = self.Kulsinski
+            elif compare_selected == 'Rogers_Tanimoto':
+                func = self.Rogers_Tanimoto
+            elif compare_selected == 'Russell_Rao':
+                func = self.Russell_Rao
+            elif compare_selected == 'Sokal_Michener':
+                func = self.Sokal_Michener
+            elif compare_selected == 'Sokal_Sneath':
+                func = self.Sokal_Sneath
+            elif compare_selected == 'Yule':
+                func = self.Yule
+            elif compare_selected == 'Hsim_Distance':
+                func = self.Hsim_Distance
+            elif compare_selected == 'Close_Distance':
+                func = self.Close_Distance
+            else:
+                func = self.fun
 
-    # def log_centering_transform(self, data):
-    #     # 对数据进行对数变换
-    #     log_data = np.log1p(data)  # 使用log1p避免log(0)的问题
+            # distances = np.array([func(A, b) for b in B])
+            # results[i, i:] = distances
+            # results[i:, i] = distances  # 对称矩阵
 
-    #     # 对变换后的数据进行中心化处理
-    #     centered_log_data = log_data - np.mean(log_data, axis=0)
+            # 使用广播机制计算距离
+            for i in range(n):
+                A = arrays[i]
+                B = arrays[i:]  # 只计算上三角部分
+                # 使用 numpy 的广播机制计算距离，并将 A 和 b 转换为 DataFrame
+                distances = np.array([func(pd.DataFrame(A.reshape(self.df_list[i].shape)), pd.DataFrame(b.reshape(self.df_list[i].shape))) for b in B])
+                results[i, i:] = distances
+                results[i:, i] = distances  # 对称矩阵
+    
+        
+        
+        labels = self.df_name_list
+        result_df = pd.DataFrame(results, index=labels, columns=labels)  
+        self.df = result_df
+        model = PandasModel(self.df.round(4))
+        self.table.setModel(model)
 
-    #     return centered_log_data
+    # Assuming `fun` is a function that takes two DataFrames and returns a value
+    def fun(self, df1, df2):
+        # Example function: return the sum of the shapes of the two DataFrames
+        return df1.shape[0] + df2.shape[0]
 
-    def centering_transform(self, data):
-        # 中心化处理
-        centered_log_data = data - np.mean(data, axis=0)
-        return centered_log_data
+ 
 
-    def z_score_normalization(self, data):
-        return (data - np.mean(data, axis=0)) / np.std(data, axis=0)
+    def whole_process(self):
+        n = len(self.df_list)
+        # 将 DataFrame 转换为 numpy 数组
+        arrays = np.array([df.values.ravel() for df in self.df_list])        
+        # 创建一个 n x n 的结果矩阵
+        results = np.zeros((n, n))
+        # 使用广播机制计算距离
+        distance_function_list = [self.eculidean, self.manhattan, self.chebyshev, self.minkowski, self.cosine, self.correlation, self.jaccard, self.dice, self.kulsinski, self.rogers_tanimoto, self.russell_rao, self.sokal_michener, self.sokal_sneath, self.yule]
+        for func in distance_function_list:
+            for i in range(n):
+                A = arrays[i]
+                B = arrays[i:]  # 只计算上三角部分
+                # 使用 numpy 的广播机制计算距离，并将 A 和 b 转换为 DataFrame
+                distances = np.array([func(pd.DataFrame(A.reshape(self.df_list[i].shape)), pd.DataFrame(b.reshape(self.df_list[i].shape))) for b in B])
+                results[i, i:] = distances
+                results[i:, i] = distances  # 对称矩阵
+            labels = self.df_name_list
+            result_df = pd.DataFrame(results, index=labels, columns=labels)  
+            # 使用函数名作为文件名
+            result_df.to_csv(f'result_{func.__name__}.csv', sep=',', encoding='utf-8')
 
-    def standardize(self, data):
-        scaler = StandardScaler()
-        return scaler.fit_transform(data)
-
-    def equalize_hist(self, data):
-        return exposure.equalize_hist(data)
-
-
+       # 2024年7月14日进度
+    
 def main():
     # Linux desktop environments use an app's .desktop file to integrate the app
     # in to their application menus. The .desktop file of this app will include
