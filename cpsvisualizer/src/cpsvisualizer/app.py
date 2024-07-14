@@ -415,7 +415,7 @@ def visual_diff(df_A=pd.DataFrame,df_B=pd.DataFrame):
 
     plt.tight_layout()
     # plt.axis('off') 
-    plt.show()
+    # plt.show()
 
 
 class CheckBoxDelegate(QStyledItemDelegate):
@@ -473,7 +473,7 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         self.df_list=[]
         self.df_name_list = []
         self.function_list = ["log_transform","centering_transform","z_score_normalization","standardize","equalize_hist"]
-        self.distance_list = ["Euclidean", "Manhattan", "Chebyshev", 'Minkowski', 
+        self.distance_list = ["","Euclidean", "Manhattan", "Chebyshev", 'Minkowski', 
                  'Cosine', 'Correlation', 'Jaccard', 'Dice', 
                  'Kulsinski', 'Rogers-Tanimoto', 'Russell-Rao', 
                  'Sokal-Michener', 'Sokal-Sneath', 'Yule',
@@ -483,6 +483,7 @@ class CPSVisualizer(QtWidgets.QMainWindow):
                  'mutual_info_regression_unflattern',
                  'mutual_info_regression_flattern',
                  'calculate_ssim', 'luminance', 'contrast', 'structure',]
+        self.plot_flag = 'Select Data'
 
     def init_ui(self):
         self.setWindowTitle('CPS-Visualizer: Calculation and visualization of CPS (counts per second) for ICPMS scan data.')
@@ -513,14 +514,13 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         clear_action = QAction('Clear Data', self)
         clear_action.setShortcut('Ctrl+C') # 设置快捷键为Ctrl+C
         clear_action.triggered.connect(self.clear_data)  # 连接到clear_data方法
-        self.toolbar.addAction(clear_action)       
-
-        # 在工具栏中添加一个Plot action
-        plot_action = QAction('Plot Data', self)
-        plot_action.setShortcut('Ctrl+P')  # 设置快捷键为Ctrl+P
-        plot_action.triggered.connect(self.plot_data)
-        self.toolbar.addAction(plot_action)
-
+        self.toolbar.addAction(clear_action)     
+        
+        # 在工具栏中添加一个 Calculate All action
+        calc_all_action = QAction('Calculate All', self)
+        calc_all_action.setShortcut('Ctrl+W')
+        calc_all_action.triggered.connect(self.calc_all)
+        self.toolbar.addAction(calc_all_action)         
 
         # 在工具栏中添加一个 Save Data action        
         save_data_action = QAction('Save Data', self)
@@ -528,17 +528,29 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         save_data_action.triggered.connect(self.save_data)
         self.toolbar.addAction(save_data_action)
         
+        # 在工具栏中添加一个Plot action
+        plot_action = QAction('Plot Data', self)
+        plot_action.setShortcut('Ctrl+P')  # 设置快捷键为Ctrl+P
+        plot_action.triggered.connect(self.plot_data)
+        self.toolbar.addAction(plot_action)
+
+        # 在工具栏中添加一个 Plot All action
+        plot_all_action = QAction('Plot All', self)
+        plot_all_action.setShortcut('Ctrl+A')  # 设置快捷键为Ctrl+A
+        plot_all_action.triggered.connect(self.plot_all)
+        self.toolbar.addAction(plot_all_action)
+        
         # 在工具栏中添加一个 Save Plot action
         save_plot_action = QAction('Save Plot', self)
         save_plot_action.setShortcut('Ctrl+P')  # 设置快捷键为Ctrl+P
         save_plot_action.triggered.connect(self.save_plot)
         self.toolbar.addAction(save_plot_action)
-
-        # 在工具栏中添加一个 Whole Process action
-        whole_process_action = QAction('Whole Process', self)
-        whole_process_action.setShortcut('Ctrl+W')
-        whole_process_action.triggered.connect(self.whole_process)
-        self.toolbar.addAction(whole_process_action)
+        
+        # 在工具栏中添加一个 Clear Plot action
+        clear_plot_action = QAction('Clear Plot', self)
+        # clear_plot_action.setShortcut('Ctrl+P')
+        clear_plot_action.triggered.connect(self.clear_plot)
+        self.toolbar.addAction(clear_plot_action)
 
         # 选择数据列表
         self.data_label = QLabel('Select Data')
@@ -553,7 +565,7 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         self.function_selector = QListWidget(self)
         self.function_selector.addItems(self.function_list)
         self.function_selector.setSelectionMode(QListWidget.MultiSelection)  # 设置为多选模式
-        self.function_selector.itemSelectionChanged.connect(self.plot_data)  # 连接到 plot_data 方法
+        self.function_selector.itemSelectionChanged.connect(self.plot_func)  # 连接到 plot_data 方法
 
         # 选择距离衡量方法
         self.Compare_label = QLabel('Select Compare Metric')
@@ -561,7 +573,6 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         self.Compare_selector.addItems(self.distance_list)
         # self.Compare_selector.setSelectionMode(QListWidget.MultiSelection)
         self.Compare_selector.currentTextChanged.connect(self.apply_function_to_df_pairs)
-
 
         self.toolbar.addWidget(spacer) # Add a separator before the first switch
         # 创建一个表格视图
@@ -632,8 +643,6 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         cleaned_name = name_without_ext.split('_')[0]
         return cleaned_name
 
-
-
     def mutual_info_score_unflattern_old(self,df_A=pd.DataFrame,df_B=pd.DataFrame):
         data_A = df_A.values
         data_B = df_B.values
@@ -692,7 +701,6 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         mi = np.mean(mi_scores)
         return mi
 
-
     def mutual_info_score_flattern(self,df_A=pd.DataFrame,df_B=pd.DataFrame):    
         data_A = df_A.values
         data_B = df_B.values
@@ -743,7 +751,6 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         # print(f"Mutual Information Regression Average: {average_mutual_info_r}")
         return(average_mutual_info_r)
 
-
     def mutual_info_regression_unflattern(self, df_A=pd.DataFrame, df_B=pd.DataFrame):
         data_A = df_A.values
         data_B = df_B.values
@@ -772,7 +779,6 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         # 计算平均互信息
         average_mutual_info_r = np.mean([mi_r[0] for mi_r in mutual_info_regression_list])
         return average_mutual_info_r
-
 
     def mutual_info_regression_flattern(self,df_A=pd.DataFrame,df_B=pd.DataFrame):    
         data_A = df_A.values
@@ -818,27 +824,28 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         ssim_value, ssim_img = ssim(data_A, data_B, full=True, data_range=data_range)
         # print(f"SSIM: {ssim_value}")
 
-        # 可视化SSIM图像
-        # 可视化
-        plt.figure(figsize=(10, 3))
+        # # 可视化SSIM图像
+        # # 可视化
+        # plt.figure(figsize=(10, 3))
 
-        # 原始图像
-        plt.subplot(1, 3, 1)
-        plt.title('Data A (RAW)')
-        plt.imshow(data_A, aspect='auto', cmap='gray')
-        plt.colorbar()
+        # # 原始图像
+        # plt.subplot(1, 3, 1)
+        # plt.title('Data A (RAW)')
+        # plt.imshow(data_A, aspect='auto', cmap='gray')
+        # plt.colorbar()
 
-        plt.subplot(1, 3, 2)
-        plt.title('Data B (RAW)')
-        plt.imshow(data_B, aspect='auto', cmap='gray')
-        plt.colorbar()
+        # plt.subplot(1, 3, 2)
+        # plt.title('Data B (RAW)')
+        # plt.imshow(data_B, aspect='auto', cmap='gray')
+        # plt.colorbar()
         
-        plt.subplot(1, 3, 3)
-        plt.imshow(ssim_img, aspect='auto', cmap='gray')
-        plt.title(f'SSIM Image: {ssim_value}')
-        plt.colorbar()
-        plt.show()
-        return ssim_value, ssim_img
+        # plt.subplot(1, 3, 3)
+        # plt.imshow(ssim_img, aspect='auto', cmap='gray')
+        # plt.title(f'SSIM Image: {ssim_value}')
+        # plt.colorbar()
+        # plt.show()
+        # return ssim_value, ssim_img
+        return ssim_value
 
     def calculate_ssim_components(self,df_A: pd.DataFrame, df_B: pd.DataFrame, method='max_range'):
         # 确保两个数据集的形状匹配
@@ -1144,7 +1151,6 @@ class CPSVisualizer(QtWidgets.QMainWindow):
     def equalize_hist(self, data):
         return exposure.equalize_hist(data)
 
-
     def clear_data(self):
         # 清空数据
         self.df = pd.DataFrame()
@@ -1155,8 +1161,18 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         self.canvas.figure.clear()
         self.canvas.draw()
         self.data_selector.clear()
+        self.plot_flag = 'Select Data'
+
+
+    def plot_func(self):
+        if self.plot_flag == 'Select Data':
+            self.plot_data()
+        elif self.plot_flag == 'Plot All':
+            self.plot_all()
+
 
     def plot_data(self):
+        self.plot_flag = 'Select Data'
         # 清除之前的图像
         self.canvas.figure.clear()
         self.fig.clear()
@@ -1344,15 +1360,129 @@ class CPSVisualizer(QtWidgets.QMainWindow):
         return df1.shape[0] + df2.shape[0]
 
  
+    def plot_all_log_equal(self):
+        # 清除之前的图像
+        self.canvas.figure.clear()
+        self.fig.clear()
+        
+        selected_texts = self.df_name_list
+        
+        # 获取选择的数量
+        num_selected = len(selected_texts)
+        
+        if num_selected == 0:
+            return
+        
+        # 计算行数和列数
+        cols = math.ceil(math.sqrt(num_selected))
+        rows = math.ceil(num_selected / cols)
+        
+        # 动态创建子图
+        for i, text in enumerate(selected_texts):
+            ax = self.fig.add_subplot(rows, cols, i + 1)
+            index = self.df_name_list.index(text)
+            # ax.imshow(self.df_list[index], cmap='gray', aspect='auto')
 
-    def whole_process(self):
+            tmp_data = self.df_list[index].to_numpy()
+            tmp_data = self.log_transform(tmp_data)          
+            try:
+                tmp_data = self.equalize_hist(tmp_data)
+            except Exception:
+                pass
+            ax.imshow(tmp_data, cmap='gray', aspect='auto')
+            ax.set_title(text)  # 设置小标题
+        
+        self.canvas.draw()
+
+
+ 
+    def plot_all(self):
+        self.plot_flag = 'Plot All'
+        # 清除之前的图像
+        self.canvas.figure.clear()
+        self.fig.clear()
+        
+        selected_texts = self.df_name_list
+        
+        # 获取选择的数量
+        num_selected = len(selected_texts)
+        
+        if num_selected == 0:
+            return
+        
+        # 计算行数和列数
+        cols = math.ceil(math.sqrt(num_selected))
+        rows = math.ceil(num_selected / cols)
+        
+        # 动态创建子图
+        for i, text in enumerate(selected_texts):
+            ax = self.fig.add_subplot(rows, cols, i + 1)
+            index = self.df_name_list.index(text)
+            # ax.imshow(self.df_list[index], cmap='gray', aspect='auto')
+
+            tmp_data = self.df_list[index].to_numpy()
+
+
+            selected_functions = self.function_selector.selectedItems()
+            selected_func = [item.text() for item in selected_functions]
+
+            try:
+                if 'log_transform' in selected_func:
+                    tmp_data = self.log_transform(tmp_data)
+            except Exception as e:
+                QMessageBox.critical(None, "Error", f"Log Transform failed: {e}")
+
+            try:
+                if 'centering_transform' in selected_func:
+                    tmp_data = self.centering_transform(tmp_data)
+            except Exception as e:
+                QMessageBox.critical(None, "Error", f"Centering Transform failed: {e}")
+
+            try:
+                if 'z_score_normalization' in selected_func:
+                    tmp_data = self.z_score_normalization(tmp_data)
+            except Exception as e:
+                QMessageBox.critical(None, "Error", f"Z-Score Normalization failed: {e}")
+
+            try:
+                if 'standardize' in selected_func:
+                    tmp_data = self.standardize(tmp_data)
+            except Exception as e:
+                QMessageBox.critical(None, "Error", f"Standardization failed: {e}")
+
+            try:
+                if 'equalize_hist' in selected_func:
+                    tmp_data = self.equalize_hist(tmp_data)
+            except Exception as e:
+                QMessageBox.critical(None, "Error", f"Histogram Equalization failed: {e}")
+            ax.imshow(tmp_data, cmap='gray', aspect='auto')
+            ax.set_title(text)  # 设置小标题
+        
+        self.canvas.draw()
+
+
+    def clear_plot(self):
+        self.canvas.figure.clear()
+        self.canvas.draw()
+
+    def calc_all(self):
+        
+
+        # 弹出路径选择对话框
+        directory = QFileDialog.getExistingDirectory(None, 'Select Directory')
+
+        # 如果没有选择路径，则使用当前工作目录
+        if not directory:
+            directory = working_directory
+            
         n = len(self.df_list)
         # 将 DataFrame 转换为 numpy 数组
         arrays = np.array([df.values.ravel() for df in self.df_list])        
         # 创建一个 n x n 的结果矩阵
         results = np.zeros((n, n))
         # 使用广播机制计算距离
-        distance_function_list = [self.Euclidean, self.Manhattan, self.Chebyshev, self.Minkowski, self.Cosine, self.Correlation, self.Jaccard, self.Dice, self.Kulsinski, self.Rogers_Tanimoto, self.Russell_Rao, self.Sokal_Michener, self.Sokal_sneath, self.Yule,self.mutual_info_regression_flattern,self.mutual_info_regression_unflattern,self.mutual_info_score_flattern,self.mutual_info_score_unflattern,self.calculate_ssim,self.luminance,self.contrast,self.structure,self.Hsim_Distance,self.Close_Distance]
+        distance_function_list = [self.Euclidean, self.Manhattan, self.Chebyshev, self.Minkowski, self.Cosine, self.Correlation, self.Jaccard, self.Dice, self.Kulsinski, self.Rogers_Tanimoto, self.Russell_Rao, self.Sokal_Michener, self.Sokal_Sneath, self.Yule,self.mutual_info_regression_flattern,self.mutual_info_regression_unflattern,self.mutual_info_score_flattern,self.mutual_info_score_unflattern,self.calculate_ssim,self.luminance,self.contrast,self.structure,self.Hsim_Distance,self.Close_Distance]
+
         for func in distance_function_list:
             for i in range(n):
                 A = arrays[i]
@@ -1364,7 +1494,12 @@ class CPSVisualizer(QtWidgets.QMainWindow):
             labels = self.df_name_list
             result_df = pd.DataFrame(results, index=labels, columns=labels)  
             # 使用函数名作为文件名
-            result_df.to_csv(f'result_{func.__name__}.csv', sep=',', encoding='utf-8')
+            # result_df.to_csv(f'result_{func.__name__}.csv', sep=',', encoding='utf-8')
+            file_path = os.path.join(directory, f'result_{func.__name__}.csv')
+            try:
+                result_df.to_csv(file_path, sep=',', encoding='utf-8')
+            except Exception:
+                pass
 
        # 2024年7月14日进度
     
