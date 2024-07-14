@@ -1528,3 +1528,5 @@ if __name__ == '__main__':
     main_window = CPSVisualizer()
     main_window.show()  # 显示主窗口
     sys.exit(app.exec())
+
+    # 一千多行代码，终于实现了基本框架了
