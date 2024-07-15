@@ -29,9 +29,7 @@ sudo apt install libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 li
 
 ### Windows Installation
 
-If you are using Windows 11 and above, you can download the packaged file from the following link:
-
-https://pan.baidu.com/s/1F-RFVtzELEoOlSAkViuSsA?pwd=cugb  with code `cugb`.
+If you are using Windows 11 and above, you can download the packaged file from the following link: [https://pan.baidu.com/s/1F-RFVtzELEoOlSAkViuSsA?pwd=cugb](https://pan.baidu.com/s/1F-RFVtzELEoOlSAkViuSsA?pwd=cugb) with code `cugb`.
 
 There are two files in the link above, `CPS-Visualizer-1.0.msi` and `CPS-Visualizer-1.0.zip`.
 `CPS-Visualizer-1.0.msi` can be double clicked to install.
