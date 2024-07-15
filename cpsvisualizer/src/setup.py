@@ -18,7 +18,7 @@ except:
 
 
 setup(name='cpsvisualizer',
-      version= 1.20240715125333,
+      version= 1.20240715141111,
       description='Calculation and visualization of CPS (counts per second) for ICPMS scan data.',
       longdescription=README,
       author='Frederic',
@@ -30,7 +30,7 @@ setup(name='cpsvisualizer',
       include_package_data=True,
       install_requires=[
                         'cython',
-                        'numpy',
+                        'numpy==1.26.4',
                         'pandas',
                         'scipy',
                         'xlrd',

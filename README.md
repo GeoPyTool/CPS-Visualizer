@@ -27,6 +27,16 @@ sudo apt install libxcb-cursor0
 sudo apt install libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-xkb1 libxkbcommon-x11-0
 ```
 
+### Windows Installation
+
+If you are using Windows 11 and above, you can download the packaged file from the following link:
+
+https://pan.baidu.com/s/1F-RFVtzELEoOlSAkViuSsA?pwd=cugb  with code `cugb`.
+
+There are two files in the link above, `CPS-Visualizer-1.0.msi` and `CPS-Visualizer-1.0.zip`.
+`CPS-Visualizer-1.0.msi` can be double clicked to install.
+`CPS-Visualizer-1.0.zip` can be extracted to a folder and run the `CPS-Visualizer-1.0.exe` file in the folder.
+
 ### Installation with Pip
 
 To use this application, python 3.12 or above is required, which can be downloaded from the official website. Python installation related resources and instructions can be found at https://www.python.org/downloads/.
