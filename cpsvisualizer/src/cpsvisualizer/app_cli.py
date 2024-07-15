@@ -745,6 +745,9 @@ class CPS_CLI:
         print('PNG file saved at:', png_path)
         print('PDF file saved at:', pdf_path)
         print('SVG file saved at:', svg_path)
+        
+        # 关闭当前图像
+        plt.close()
 
 
 

@@ -1515,19 +1515,37 @@ def main():
         appName = 'CPS-Visualizer: Calculation and visualization of CPS (counts per second) for ICPMS scan data.'
         QApplication.setApplicationName(appName)
 
-    
+    # app = QApplication(sys.argv)
+    try:
+        app = QApplication(sys.argv)
+    except RuntimeError:
+        # If a QApplication instance already exists, destroy it and create a new one
+        app = QApplication.instance()
+        if app is not None:
+            app.quit()
+            app = None
+            app = QApplication(sys.argv)
 
-    app = QApplication(sys.argv)
     main_window = CPSVisualizer()
     sys.exit(app.exec())
 
 
 if __name__ == '__main__':
-    app = QApplication(sys.argv)
+    try:
+        app = QApplication(sys.argv)
+    except RuntimeError:
+        # If a QApplication instance already exists, destroy it and create a new one
+        app = QApplication.instance()
+        if app is not None:
+            app.quit()
+            app = None
+            app = QApplication(sys.argv)
+
+    
     main_window = CPSVisualizer()
     main_window.show()  # 显示主窗口
     sys.exit(app.exec())
 
     # 一千多行代码，终于实现了基本框架了
 
-    # python -c "import cpsvisualizer;cpsvisualizer.main()"
+    # python -c "import cpsvisualizer;cpsvisualizer.gui()"

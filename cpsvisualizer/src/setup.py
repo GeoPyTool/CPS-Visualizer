@@ -18,7 +18,7 @@ except:
 
 
 setup(name='cpsvisualizer',
-      version= 0.20240716,
+      version= 1.20240715125333,
       description='Calculation and visualization of CPS (counts per second) for ICPMS scan data.',
       longdescription=README,
       author='Frederic',
