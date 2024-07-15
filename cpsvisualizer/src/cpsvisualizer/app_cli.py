@@ -750,22 +750,27 @@ class CPS_CLI:
 
 
 
-def main():
+def main(data_files_arg=None, functions_arg=None, operation_arg=None):
     main_app = CPS_CLI()
-    if len(sys.argv) < 4:
-        print("Usage: python app_cli.py 'data1.csv data2.csv data3.csv' 'func1 func2 func3' 'silent OR show'")
-        # print("Usage: python C:/Users/HP/Documents/GitHub/CPS-Visualizer/cpsvisualizer/src/cpsvisualizer/app_cli.py 'Ag.csv Cu.csv  Zn.csv  Fe.csv ' 'log_transform papa pupu pipi popo equalize_hist Euclidean Yule' 'silent OR show'")
-        sys.exit(1)
+    
+    if data_files_arg is None or functions_arg is None or operation_arg is None:
+        if len(sys.argv) < 4:
+            print("Usage 1: python app_cli.py 'data1.csv data2.csv data3.csv' 'func1 func2 func3' 'silent OR show'",
+            '''Usage 2: /n pip install cpsvisualizer /n import cpsvisualizer /n cpsvisualizer.cli('Ag.csv Cu.csv Zn.csv Fe.csv', 'log_transform papa pupu pipi popo equalize_hist Euclidean Yule', 'silent')''')
+            
+            # print("Usage: python C:/Users/HP/Documents/GitHub/CPS-Visualizer/cpsvisualizer/src/cpsvisualizer/app_cli.py 'Ag.csv Cu.csv  Zn.csv  Fe.csv ' 'log_transform papa pupu pipi popo equalize_hist Euclidean Yule' 'silent OR show'")
+            sys.exit(1)
 
-    data_files = list(dict.fromkeys(sys.argv[1].split()))
-    functions = list(dict.fromkeys(sys.argv[2].split()))
-    operation = sys.argv[3]
+        data_files_arg = sys.argv[1]
+        functions_arg = sys.argv[2]
+        operation_arg = sys.argv[3]
+
+    data_files = list(dict.fromkeys(data_files_arg.split()))
+    functions = list(dict.fromkeys(functions_arg.split()))
+    operation = operation_arg
 
     print('Data Files are : ',data_files)
     # print('Data Files are : ',functions)
-
-    # 假设 functions 是一个包含函数名称的列表
-    functions = sys.argv[2].split()
 
     # 拆分 functions 列表
     trans_functions = [func for func in functions if func in main_app.trans_function_list]

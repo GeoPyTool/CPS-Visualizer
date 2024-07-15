@@ -69,14 +69,13 @@ plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
 plt.rcParams['svg.fonttype'] = 'none'
 plt.rcParams['pdf.fonttype'] =  'truetype'
 
-# 获取当前文件的绝对路径
-current_file_path = os.path.abspath(__file__)
+# # 获取当前文件的绝对路径
+# current_file_path = os.path.abspath(__file__)
 
-# 获取当前文件的目录
-current_directory = os.path.dirname(current_file_path)
-working_directory = os.path.dirname(current_file_path)
-# 改变当前工作目录
-os.chdir(current_directory)
+# # 获取当前文件的目录
+# current_directory = os.path.dirname(current_file_path)
+# # 改变当前工作目录
+# os.chdir(current_directory)
 
 class PandasModel(QAbstractTableModel):
     def __init__(self, df=pd.DataFrame(), parent=None):
@@ -205,7 +204,7 @@ class AppForm(QMainWindow):
 
         DataFileOutput, ok2 = QFileDialog.getSaveFileName(self,
                                                           'Save Data File',
-                                                          working_directory + self.FileName_Hint,
+                                                          self.FileName_Hint,
                                                           'CSV Files (*.csv);;Excel Files (*.xlsx)')  # 数据文件保存输出
 
         if "Label" in self.df.columns.values.tolist():
@@ -609,7 +608,6 @@ class CPSVisualizer(QMainWindow):
         self.show()
 
     def open_files(self):
-        global working_directory 
         file_names, _ = QFileDialog.getOpenFileNames(self, 'Open Files', '', 'CSV Files (*.csv);;Excel Files (*.xls *.xlsx)')
         if file_names:
             
@@ -1462,9 +1460,11 @@ class CPSVisualizer(QMainWindow):
         # 弹出路径选择对话框
         directory = QFileDialog.getExistingDirectory(None, 'Select Directory')
 
+        
         # 如果没有选择路径，则使用当前工作目录
         if not directory:
-            directory = working_directory
+            # directory = current_directory
+            directory = os.getcwd()
             
         n = len(self.df_list)
         # 将 DataFrame 转换为 numpy 数组
@@ -1507,9 +1507,15 @@ def main():
     # Find the name of the module that was used to start the app
     app_module = sys.modules["__main__"].__package__
     # Retrieve the app's metadata
-    metadata = importlib.metadata.metadata(app_module)
+    # metadata = importlib.metadata.metadata(app_module)
+    try:
+        metadata = importlib.metadata.metadata(app_module)
+        QApplication.setApplicationName(metadata["Formal-Name"])
+    except Exception:
+        appName = 'CPS-Visualizer: Calculation and visualization of CPS (counts per second) for ICPMS scan data.'
+        QApplication.setApplicationName(appName)
 
-    QApplication.setApplicationName(metadata["Formal-Name"])
+    
 
     app = QApplication(sys.argv)
     main_window = CPSVisualizer()
@@ -1523,3 +1529,5 @@ if __name__ == '__main__':
     sys.exit(app.exec())
 
     # 一千多行代码，终于实现了基本框架了
+
+    # python -c "import cpsvisualizer;cpsvisualizer.main()"
