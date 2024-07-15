@@ -34,7 +34,7 @@ To use this application, python 3.12 or above is required, which can be download
 When finished installing Python, you need to install some depencies using pip:
 
 ```Bash
-pip install matplotlib numpy pandas PySide6 scipy scikit-learn scikit-image
+pip install matplotlib numpy==1.26.4 pandas PySide6 scipy scikit-learn scikit-image
 ```
 
 Then you can install the `cpsvisualizer` package using pip:
