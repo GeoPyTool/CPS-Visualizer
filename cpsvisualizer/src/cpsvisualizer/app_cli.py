@@ -606,8 +606,8 @@ class CPS_CLI:
 
     def centering_transform(self, data):
         # 中心化处理
-        centered_log_data = data - np.mean(data, axis=0)
-        return centered_log_data
+        centered_data = data - np.mean(data, axis=0)
+        return centered_data
 
     def z_score_normalization(self, data):
         return (data - np.mean(data, axis=0)) / np.std(data, axis=0)
