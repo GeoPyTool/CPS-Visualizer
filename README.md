@@ -104,7 +104,7 @@ These are functions that calculate distances between high-dimensional data point
 * Hsim_Distance
 
 $$
-\operatorname{Hsim}\left(x_i, \quad x_j\right)=\frac{\sum_{k=1}^n \frac{1}{1+\left|x_{i k}-x_{j k}\right|}}{n}
+\operatorname{Hsim}\left(x_i, x_j\right)=\frac{\sum_{k=1}^n \frac{1}{1+\left|x_{i k}-x_{j k}\right|}}{n}
 $$
 
 
