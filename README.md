@@ -1,11 +1,11 @@
 # CPS-Visualizer
 
-CPS-Visualizer is a Python package that calculates and visualizes CPS (counts per second) for ICPMS scan data.
+CPS-Visualizer is a Python package that calculates and visualizes CPS (counts per second) for LA-ICP-MS scan data.
 It provides a command-line interface (CLI) and a graphical user interface (GUI) for users to easily calculate and visualize CPS data. The package is designed to be user-friendly and easy to use, with a simple and intuitive interface.
 
 ## Features
 
-- Support for surface data visualization for ICPMS scan data
+- Support for surface data visualization for LA-ICP-MS scan data
 - Export CPS data to CSV files
 - Support for multiple data files as multiple components
 - Support for various data processing methods, such as log_transform,centering_transform,z_score_normalization,standardize and equalize_hist
