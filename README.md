@@ -16,22 +16,40 @@ It provides a command-line interface (CLI) and a graphical user interface (GUI) 
 We have developed a list of preprocessing functions that can be used to transform the data for more intuitive visualization.
 
 * log_transform: 
-
+$$
+Log_{t}{(data)} = \ln(1 + data)
+$$
         `log_data = np.log1p(data)`. The mathematical meaning of  is to compute the natural logarithm of `1 + data`. This function is more accurate when dealing with small values close to zero than calculating `np.log( data)` directly. Specifically, it returns `ln(1 + data)`, where `ln`denotes the natural logarithm (the logarithm with e as its base).
 
-* centering_transform
 
+* centering_transform
+$$
+Centered{(data)} = data - Mean(data)
+$$
         `centered_data = data - np.mean(data, axis=0)`. This function subtracts the mean of each column from the corresponding column in the input data. The result is a new array where each element is the corresponding element in the input data minus the mean of its column.
 
 * z_score_normalization
-
+$$
+Normalized_{z\_score}(data) = \frac{data - \mu}{\sigma}
+$$
         `normalized_data = (data - np.mean(data, axis=0)) / np.std(data, axis=0)`. This function normalizes the data by subtracting the mean and dividing by the standard deviation of each column. The result is a new array where each element is the corresponding element in the input data minus the mean of its column, divided by the standard deviation of its column.
 
 * standardize
-
+$$
+Standardized_{(Min-Max)}(data) = \frac{data - \min(data)}{\max(data) - \min(data)}
+$$
         `standardized_data = (data - np.min(data, axis=0)) / (np.max(data, axis=0) - np.min(data, axis=0))`. This function standardizes the data by subtracting the minimum value and dividing by the range (maximum value - minimum value) of each column. The result is a new array where each element is the corresponding element in the input data minus the minimum value of its column, divided by the range of its column.
 
 * equalize_hist
+$$
+\text{Equalized\_data}(x, y) = \frac{CDF(data(x, y)) - CDF_{\min}}{1 - CDF_{\min}}
+$$
+
+Where:
+- ${data}(x, y)$ is the pixel value at position $(x, y)$.
+- $CDF$ is the cumulative distribution function of the histogram of the data.
+- $CDF_{min}$ is the minimum non-zero value of the CDF.
+
 
         `equalized_data = exposure.equalize_hist(data)`. This function applies histogram equalization to the data. Histogram equalization is a technique used to improve the contrast of an image by redistributing the intensity values of the pixels. It works by creating a histogram of the pixel intensities and then equalizing the histogram so that the pixel intensities are distributed evenly across the range of possible values. The result is a new array where each element is the corresponding element in the input data after histogram equalization.
 
