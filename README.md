@@ -42,7 +42,7 @@ $$
 
 * equalize_hist:
 $$
-\text{Equalized\_data}(x, y) = \frac{CDF(data(x, y)) - CDF_{\min}}{1 - CDF_{\min}}
+\mathrm{Equalized\_data}(x, y) = \frac{CDF(data(x, y)) - CDF_{\min}}{1 - CDF_{\min}}
 $$
 
 Where:
@@ -86,7 +86,7 @@ $$
 * Minkowski
 
 $$
-d(x, y) = \left(\sum_{i=1}^{n}|x_i - y_i|^p\right)^{1/p}
+d(x, y) = \Big(\sum_{i=1}^{n}|x_i - y_i|^p\Big)^{1/p}
 $$
 
         `minkowski_distance = np.sum(np.abs(data1 - data2) ** p) ** (1/p)`. This function calculates the Minkowski distance between data points. The Minkowski distance is a generalized metric that can be used to measure the distance between two points in a normed vector space. It is calculated by taking the pth root of the sum of the pth powers of the absolute differences between the corresponding elements of the two data points.
@@ -146,14 +146,14 @@ These are functions that calculate distances between high-dimensional data point
 * Hsim_Distance
 
 $$
-\operatorname{Hsim}\left(x_i, x_j\right)=\frac{\sum_{k=1}^n \frac{1}{1+\left|x_{i k}-x_{j k}\right|}}{n}
+\mathrm{Hsim}(x_i, x_j)=\frac{\sum_{k=1}^n \frac{1}{1+|x_{ik}-x_{jk}|}}{n}
 $$
 
 
 * Close_Distance
 
 $$
-\operatorname{Close}\left(x_i, x_j\right)=\frac{\sum_{k=1}^n e^{-\left|x_{i k}-x_{j k}\right|}}{n}
+\mathrm{Close}(x_i, x_j)=\frac{\sum_{k=1}^n e^{-|x_{ik}-x_{jk}|}}{n}
 $$
 
 ### Mutual Information

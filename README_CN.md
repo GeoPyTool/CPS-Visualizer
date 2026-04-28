@@ -42,7 +42,7 @@ $$
 
 * equalize_hist：
 $$
-\text{Equalized\_data}(x, y) = \frac{CDF(data(x, y)) - CDF_{\min}}{1 - CDF_{\min}}
+\mathrm{Equalized\_data}(x, y) = \frac{CDF(data(x, y)) - CDF_{\min}}{1 - CDF_{\min}}
 $$
 
 其中：
@@ -86,7 +86,7 @@ $$
 * 闵可夫斯基距离（Minkowski）
 
 $$
-d(x, y) = \left(\sum_{i=1}^{n}|x_i - y_i|^p\right)^{1/p}
+d(x, y) = \Big(\sum_{i=1}^{n}|x_i - y_i|^p\Big)^{1/p}
 $$
 
         `minkowski_distance = np.sum(np.abs(data1 - data2) ** p) ** (1/p)`。此函数计算数据点之间的闵可夫斯基距离。闵可夫斯基距离是一种广义度量，可用于衡量赋范向量空间中两点之间的距离。通过取两个数据点对应元素绝对差的 p 次幂之和的 p 次方根来计算。
@@ -146,14 +146,14 @@ $$
 * Hsim_Distance
 
 $$
-\operatorname{Hsim}\left(x_i, x_j\right)=\frac{\sum_{k=1}^n \frac{1}{1+\left|x_{i k}-x_{j k}\right|}}{n}
+\mathrm{Hsim}(x_i, x_j)=\frac{\sum_{k=1}^n \frac{1}{1+|x_{ik}-x_{jk}|}}{n}
 $$
 
 
 * Close_Distance
 
 $$
-\operatorname{Close}\left(x_i, x_j\right)=\frac{\sum_{k=1}^n e^{-\left|x_{i k}-x_{j k}\right|}}{n}
+\mathrm{Close}(x_i, x_j)=\frac{\sum_{k=1}^n e^{-|x_{ik}-x_{jk}|}}{n}
 $$
 
 ### 互信息
