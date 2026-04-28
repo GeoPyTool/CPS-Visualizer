@@ -61,25 +61,49 @@ $$
 
 * 欧氏距离（Euclidean）
 
+$$
+d(x, y) = \sqrt{\sum_{i=1}^{n}(x_i - y_i)^2}
+$$
+
         `euclidean_distance = np.sqrt(np.sum((data1 - data2) ** 2))`。此函数计算数据点之间的欧氏距离。欧氏距离是欧几里得空间中两点之间的"普通"直线距离。通过取两个数据点对应元素差的平方和的平方根来计算。
 
 * 曼哈顿距离（Manhattan）
+
+$$
+d(x, y) = \sum_{i=1}^{n}|x_i - y_i|
+$$
 
         `manhattan_distance = np.sum(np.abs(data1 - data2))`。此函数计算数据点之间的曼哈顿距离。曼哈顿距离是两个数据点对应元素绝对差之和。也称为 L1 范数或出租车距离。
 
 * 切比雪夫距离（Chebyshev）
 
+$$
+d(x, y) = \max_{i}|x_i - y_i|
+$$
+
         `chebyshev_distance = np.max(np.abs(data1 - data2))`。此函数计算数据点之间的切比雪夫距离。切比雪夫距离是两个数据点对应元素的最大绝对差。也称为 L∞ 范数或棋盘距离。
 
 * 闵可夫斯基距离（Minkowski）
+
+$$
+d(x, y) = \left(\sum_{i=1}^{n}|x_i - y_i|^p\right)^{1/p}
+$$
 
         `minkowski_distance = np.sum(np.abs(data1 - data2) ** p) ** (1/p)`。此函数计算数据点之间的闵可夫斯基距离。闵可夫斯基距离是一种广义度量，可用于衡量赋范向量空间中两点之间的距离。通过取两个数据点对应元素绝对差的 p 次幂之和的 p 次方根来计算。
 
 * 余弦距离（Cosine）
 
+$$
+\cos(\theta) = \frac{x \cdot y}{\|x\|\|y\|}
+$$
+
         `cosine_similarity = 1 - spatial.distance.cosine(data1, data2)`。此函数计算数据点之间的余弦相似度。余弦相似度是内积空间中两个非零向量之间夹角余弦值的度量。通过取两个数据点的点积并除以两个数据点模的乘积来计算。
 
 * 相关距离（Correlation）
+
+$$
+r = \frac{\sum_{i=1}^{n}(x_i - \bar{x})(y_i - \bar{y})}{\sqrt{\sum_{i=1}^{n}(x_i - \bar{x})^2}\sqrt{\sum_{i=1}^{n}(y_i - \bar{y})^2}}
+$$
 
         `correlation_coefficient = np.corrcoef(data1, data2)[0, 1]`。此函数计算数据点之间的相关系数。相关系数是两个变量之间线性关系的度量。通过取两个数据点的协方差并除以两个数据点标准差的乘积来计算。
 

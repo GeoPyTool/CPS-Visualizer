@@ -61,25 +61,49 @@ We have developed a list of similarity metrics that can be used to calculate the
 
 * Euclidean
 
+$$
+d(x, y) = \sqrt{\sum_{i=1}^{n}(x_i - y_i)^2}
+$$
+
         `euclidean_distance = np.sqrt(np.sum((data1 - data2) ** 2))`. This function calculates the Euclidean distance between data points. The Euclidean distance is the "ordinary" straight-line distance between two points in Euclidean space. It is calculated by taking the square root of the sum of the squared differences between the corresponding elements of the two data points.
 
 * Manhattan
+
+$$
+d(x, y) = \sum_{i=1}^{n}|x_i - y_i|
+$$
 
         `manhattan_distance = np.sum(np.abs(data1 - data2))`. This function calculates the Manhattan distance between data points. The Manhattan distance is the sum of the absolute differences between the corresponding elements of the two data points. It is also known as the L1 norm or the taxicab distance.
 
 * Chebyshev
 
+$$
+d(x, y) = \max_{i}|x_i - y_i|
+$$
+
         `chebyshev_distance = np.max(np.abs(data1 - data2))`. This function calculates the Chebyshev distance between data points. The Chebyshev distance is the maximum absolute difference between the corresponding elements of the two data points. It is also known as the L∞ norm or the chessboard distance.
 
 * Minkowski
+
+$$
+d(x, y) = \left(\sum_{i=1}^{n}|x_i - y_i|^p\right)^{1/p}
+$$
 
         `minkowski_distance = np.sum(np.abs(data1 - data2) ** p) ** (1/p)`. This function calculates the Minkowski distance between data points. The Minkowski distance is a generalized metric that can be used to measure the distance between two points in a normed vector space. It is calculated by taking the pth root of the sum of the pth powers of the absolute differences between the corresponding elements of the two data points.
 
 * Cosine
 
+$$
+\cos(\theta) = \frac{x \cdot y}{\|x\|\|y\|}
+$$
+
         `cosine_similarity = 1 - spatial.distance.cosine(data1, data2)`. This function calculates the cosine similarity between data points. The cosine similarity is a measure of similarity between two non-zero vectors of an inner product space that measures the cosine of the angle between them. It is calculated by taking the dot product of the two data points and dividing it by the product of the magnitudes of the two data points.
 
 * Correlation
+
+$$
+r = \frac{\sum_{i=1}^{n}(x_i - \bar{x})(y_i - \bar{y})}{\sqrt{\sum_{i=1}^{n}(x_i - \bar{x})^2}\sqrt{\sum_{i=1}^{n}(y_i - \bar{y})^2}}
+$$
 
         `correlation_coefficient = np.corrcoef(data1, data2)[0, 1]`. This function calculates the correlation coefficient between data points. The correlation coefficient is a measure of the linear relationship between two variables. It is calculated by taking the covariance of the two data points and dividing it by the product of the standard deviations of the two data points.
         
