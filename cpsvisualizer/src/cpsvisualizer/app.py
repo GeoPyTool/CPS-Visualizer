@@ -63,6 +63,30 @@ plt.rcParams['pdf.fonttype'] = 'truetype'
 TRANSFORM_NAMES = list(TRANSFORM_FUNCTIONS.keys())
 
 
+class CPSApplication(QApplication):
+    """QApplication subclass that catches exceptions raised inside Qt
+    signal/slot callbacks and shows them in a message box instead of
+    letting the app crash."""
+
+    def notify(self, receiver, event):
+        try:
+            return super().notify(receiver, event)
+        except Exception as e:
+            import traceback
+            msg = traceback.format_exc()
+            print(msg, file=sys.stderr)
+            try:
+                box = QMessageBox()
+                box.setIcon(QMessageBox.Critical)
+                box.setWindowTitle('CPS-Visualizer - Error')
+                box.setText(f'{type(e).__name__}: {e}')
+                box.setDetailedText(msg)
+                box.exec()
+            except Exception:
+                pass
+            return False
+
+
 def _subplot_grid(n):
     """Return (rows, cols) for an optimal nearly-square grid of n subplots."""
     cols = int(math.ceil(math.sqrt(n)))
@@ -1156,6 +1180,27 @@ class CPSVisualizer(QMainWindow):
             self._aoda_table.setModel(PandasModel())
 
 
+def _install_excepthook(app_ref=None):
+    """Install a global exception hook that shows a message box instead of
+    crashing.  Catches unhandled exceptions in Qt slots (which Qt otherwise
+    swallows or aborts on) and in the main thread."""
+    def _hook(exc_type, exc_value, exc_tb):
+        import traceback
+        msg = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
+        print(msg, file=sys.stderr)
+        try:
+            from PySide6.QtWidgets import QMessageBox
+            box = QMessageBox()
+            box.setIcon(QMessageBox.Critical)
+            box.setWindowTitle('CPS-Visualizer - Error')
+            box.setText(f'{exc_type.__name__}: {exc_value}')
+            box.setDetailedText(msg)
+            box.exec()
+        except Exception:
+            pass  # GUI not available (headless / shutting down) - already logged
+    sys.excepthook = _hook
+
+
 def main():
     try:
         metadata = importlib.metadata.metadata(
@@ -1165,20 +1210,34 @@ def main():
     except Exception:
         QApplication.setApplicationName('CPS-Visualizer')
     try:
-        app = QApplication(sys.argv)
+        app = CPSApplication(sys.argv)
     except RuntimeError:
         QApplication.instance().quit()
-        app = QApplication(sys.argv)
-    window = CPSVisualizer()
+        app = CPSApplication(sys.argv)
+    _install_excepthook(app)
+    try:
+        window = CPSVisualizer()
+    except Exception as e:
+        from PySide6.QtWidgets import QMessageBox
+        QMessageBox.critical(None, 'CPS-Visualizer - Startup Error',
+                             f'Failed to start:\n{e}')
+        sys.exit(1)
     sys.exit(app.exec())
 
 
 if __name__ == '__main__':
     try:
-        app = QApplication(sys.argv)
+        app = CPSApplication(sys.argv)
     except RuntimeError:
         QApplication.instance().quit()
-        app = QApplication(sys.argv)
-    window = CPSVisualizer()
+        app = CPSApplication(sys.argv)
+    _install_excepthook(app)
+    try:
+        window = CPSVisualizer()
+    except Exception as e:
+        from PySide6.QtWidgets import QMessageBox
+        QMessageBox.critical(None, 'CPS-Visualizer - Startup Error',
+                             f'Failed to start:\n{e}')
+        sys.exit(1)
     window.show()
     sys.exit(app.exec())

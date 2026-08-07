@@ -1,4 +1,14 @@
 # CPS-Visualizer Release Notes
+## 1.2.2 (8 Aug 2026)
+
+### Fixes
+* **Crash-proof exception handling** — all unhandled exceptions (including
+  Qt slot errors and macOS IMK input-method errors) now show a message box
+  instead of killing the application
+* Global ``sys.excepthook`` + ``CPSApplication.notify`` override catches
+  errors in signal/slot callbacks and the main thread
+* Startup failures show a clear error dialog rather than a silent abort
+
 ## 1.2.1 (8 Aug 2026)
 
 ### Major Features
