@@ -1,4 +1,11 @@
 # CPS-Visualizer Release Notes
+## 1.2.4 (8 Aug 2026)
+
+### Improvements
+* Distance panel: 8 representative distance metrics in a full 2x4 grid
+  (Euclidean, Manhattan, Chebyshev, Minkowski, Cosine, Correlation,
+  Hsim, Close) with a shared colorbar outside the grid
+
 ## 1.2.3 (8 Aug 2026)
 
 ### Improvements
