@@ -254,33 +254,63 @@ sudo apt install libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 li
 `CPS-Visualizer-1.0.msi` 可以双击安装。
 `CPS-Visualizer-1.0.zip` 可以解压到文件夹，然后运行文件夹中的 `CPS-Visualizer-1.0.exe` 文件。
 
-### 使用 Pip 安装
+### 从 PyPI 安装
 
 使用此应用程序需要 Python 3.12 或更高版本，可从官网下载。Python 安装相关资源和说明可在 https://www.python.org/downloads/ 找到。
-
-安装完 Python 后，需要使用 pip 安装一些依赖：
-
-```bash
-pip install matplotlib numpy==1.26.4 pandas PySide6 scipy scikit-learn scikit-image
-```
-
-然后可以使用 pip 安装 `cpsvisualizer` 包：
 
 ```bash
 pip install cpsvisualizer
 ```
 
+### 从源码可编辑安装
+
+如果需要开发或从源码运行，克隆仓库后在 `cpsvisualizer` 目录下以可编辑模式安装：
+
+```bash
+git clone https://github.com/GeoPyTool/CPS-Visualizer.git
+cd CPS-Visualizer/cpsvisualizer
+pip install -e ./
+```
+
+这会注册一个系统级的 `cpsv` 命令（无需再使用 `python -c ...`）。
+
 ## 使用方法
 
-该包提供两种界面：命令行界面（CLI）和图形用户界面（GUI）。
-您可以根据需要选择使用任一界面。
+该包提供三种界面——命令行界面（CLI，默认）、图形用户界面（GUI）和网页界面，均通过单一的 `cpsv` 命令访问：
+
+```bash
+cpsv --help
+```
+
+```
+cpsv - CPS-Visualizer command line
+
+Usage:
+  cpsv [DATA_FILES] [FUNCTIONS] [MODE]      运行批处理 CLI（默认）。
+  cpsv gui                                  启动桌面 GUI。
+  cpsv web [--host HOST] [--port PORT]      启动网页界面。
+
+CLI 参数:
+  DATA_FILES    空格分隔的 CSV/XLSX 数据文件列表（作为单个引号参数）
+  FUNCTIONS     空格分隔的变换与距离度量（作为单个引号参数）
+  MODE         show（默认）| silent（silent 直接保存 PNG/PDF/SVG）
+
+Web 选项:
+  --host HOST   绑定地址（默认 127.0.0.1）
+  --port PORT   绑定端口（默认 5005）
+
+示例:
+  cpsv "Ag.csv Cu.csv" "log_transform equalize_hist Euclidean" silent
+  cpsv gui
+  cpsv web --port 6789
+```
 
 ### 图形用户界面（GUI）
 
-安装完成后，可以通过执行以下命令来运行 GUI：
+安装完成后，使用以下命令启动 GUI：
 
 ```bash
-python -c "import cpsvisualizer;cpsvisualizer.gui()"
+cpsv gui
 ```
 
 然后会出现 GUI，界面如下所示：
@@ -291,12 +321,12 @@ GUI 非常直观，试一试就能上手。
 
 ### 命令行界面（CLI）
 
-或者，您也可以从命令行运行应用程序：
+也可以从命令行运行应用程序（`cpsv` 默认即 CLI）：
 
 ```bash
 cd path/to/data/files # 先 cd 到数据文件所在目录
-python -c "import cpsvisualizer;cpsvisualizer.cli('Ag.csv Cu.csv Zn.csv Fe.csv', 'log_transform papa pupi pipi popo equalize_hist Euclidean Yule', 'silent')" # 静默模式
-python -c "import cpsvisualizer;cpsvisualizer.cli('Ag.csv Cu.csv Zn.csv Fe.csv', 'log_transform papa pupi pipi popo equalize_hist Euclidean Yule', 'show')" # 显示图表
+cpsv "Ag.csv Cu.csv Zn.csv Fe.csv" "log_transform equalize_hist Euclidean Yule" silent   # 静默模式（保存 PNG/PDF/SVG）
+cpsv "Ag.csv Cu.csv Zn.csv Fe.csv" "log_transform equalize_hist Euclidean Yule" show     # 显示图表
 ```
 
 如上所示，命令行界面接受三个参数：数据文件路径、处理方法和模式（silent 或 show）。
@@ -319,7 +349,7 @@ CLI 静默模式将输出以下信息到控制台：
 
 ```bash
 (base) hadoop@hadoop:~$ cd Desktop
-(base) hadoop@hadoop:~/Desktop$ python -c "import cpsvisualizer;cpsvisualizer.cli('Ag.csv Cu.csv Zn.csv Fe.csv', 'log_transform papa pupi pipi popo equalize_hist Euclidean Yule', 'silent')"
+(base) hadoop@hadoop:~/Desktop$ cpsv "Ag.csv Cu.csv Zn.csv Fe.csv" "log_transform equalize_hist Euclidean Yule" silent
 Data Files are :  ['Ag.csv', 'Cu.csv', 'Zn.csv', 'Fe.csv']
 Trans Functions are: ['log_transform', 'equalize_hist']
 Distance Calculations are: ['Euclidean', 'Yule']
@@ -343,7 +373,7 @@ CLI 显示模式将输出以下信息到控制台：
 
 ```bash
 (base) hadoop@hadoop:~$ cd Desktop
-(base) hadoop@hadoop:~/Desktop$ python -c "import cpsvisualizer;cpsvisualizer.cli('Ag.csv Cu.csv Zn.csv Fe.csv', 'log_transform papa pupi pipi popo equalize_hist Euclidean Yule', 'show')"
+(base) hadoop@hadoop:~/Desktop$ cpsv "Ag.csv Cu.csv Zn.csv Fe.csv" "log_transform equalize_hist Euclidean Yule" show
 Data Files are :  ['Ag.csv', 'Cu.csv', 'Zn.csv', 'Fe.csv']
 Trans Functions are: ['log_transform', 'equalize_hist']
 Distance Calculations are: ['Euclidean', 'Yule']

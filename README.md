@@ -230,6 +230,38 @@ This function only returns the contrast difference between two images. The contr
 
 This function only returns the structural difference between two images. The structure is a measure of the difference in the shape and texture of an image.
 
+### On the Selection of Metrics (why Boolean set metrics are excluded)
+
+A full mathematical treatment is given in [METHODOLOGY.md](./METHODOLOGY.md).
+In short, the Boolean set-similarity metrics — **Jaccard, Dice, Kulsinski,
+Rogers-Tanimoto, Russell-Rao, Sokal-Michener, Sokal-Sneath, Yule** — are
+excluded from the AODA rankings because they collapse to **constant values**
+(all 0 or all 1) on LA-ICP-MS data and therefore carry no discriminatory power.
+
+There are two complementary reasons:
+
+1. **After block-average downsampling the support becomes constant.**
+   LA-ICP-MS scans are sparse (≈20% zeros); a block average of a mostly-zero
+   window is strictly positive, so the zero fraction drops to 0.0%.  Every
+   Boolean mask `𝟙[x>0]` then equals the all-ones mask, giving `a=n, b=c=d=0`.
+   Substituting into the contingency-table formulas yields a single constant:
+   `Jaccard=Dice=Kulsinski=Rogers-Tanimoto=Yule → 0`, and
+   `Russell-Rao=Sokal-Michener=Sokal-Sneath → 1`.
+
+2. **Even on raw sparse data the Boolean metrics are intensity-blind.**
+   All eight metrics are functions of the single 2×2 contingency table
+   `{a,b,c,d}` and are invariant under any strictly increasing monotone
+   transform of the positive intensities.  Two maps with *identical* binary
+   support but a 50× intensity gap give Jaccard distance = 0.0000, whereas
+   Euclidean gives 6.4×10⁴ and Bray-Curtis 0.9586 — i.e. the Boolean family
+   cannot tell a 100 cps grain from a 10⁷ cps grain as long as both are non-zero.
+
+For LA-ICP-MS imaging, **continuous-valued** metrics (Euclidean, Manhattan,
+Chebyshev, Minkowski, Cosine, Correlation, Bray-Curtis, Canberra,
+Hsim/Close, mutual-information variants, SSIM family) are retained because
+they operate on the multi-order-of-magnitude intensity field that defines the
+signal, and all returned 15 distinct pairwise values on the sample data.
+
 ## Installation
 
 The package is available on PyPI and can be installed using pip. It is compatible with Python 3.12 and above.
@@ -254,33 +286,116 @@ There are two files in the link above, `CPS-Visualizer-1.0.msi` and `CPS-Visuali
 `CPS-Visualizer-1.0.msi` can be double-clicked to install.
 `CPS-Visualizer-1.0.zip` can be extracted to a folder, and you can run the `CPS-Visualizer-1.0.exe` file in the folder.
 
-### Installation with Pip
+### Installation from PyPI
 
-To use this application, python 3.12 or above is required, which can be downloaded from the official website. Python installation related resources and instructions can be found at https://www.python.org/downloads/.
-
-When finished installing Python, you need to install some dependencies using pip:
-
-```bash
-pip install matplotlib numpy==1.26.4 pandas PySide6 scipy scikit-learn scikit-image
-```
-
-Then you can install the `cpsvisualizer` package using pip:
+To use this application, Python 3.12 or above is required, which can be downloaded from the official website. Python installation related resources and instructions can be found at https://www.python.org/downloads/.
 
 ```bash
 pip install cpsvisualizer
 ```
 
+### Editable Install from Source
+
+If you want to develop or run from source, clone the repo and install in editable mode inside the `cpsvisualizer` directory:
+
+```bash
+git clone https://github.com/GeoPyTool/CPS-Visualizer.git
+cd CPS-Visualizer/cpsvisualizer
+pip install -e ./
+```
+
+This registers a system-level `cpsv` command (no need to call `python -c ...` any more).
+
 ## Usage
 
-This package provides two interfaces: a command-line interface (CLI) and a graphical user interface (GUI).
-You can choose to use either interface based on your needs.
+This package provides three interfaces — a command-line interface (CLI, the default), a graphical user interface (GUI), and a web interface — all reachable through the single `cpsv` command:
+
+```bash
+cpsv --help
+```
+
+```
+cpsv - CPS-Visualizer command line
+
+Usage:
+  cpsv [DATA_FILES] [FUNCTIONS] [MODE]      Run the batch CLI (default).
+  cpsv gui                                  Launch the desktop GUI.
+  cpsv web [--host HOST] [--port PORT]      Launch the web interface.
+
+CLI arguments:
+  DATA_FILES    space-separated list of CSV/XLSX data files (one quoted arg)
+  FUNCTIONS    space-separated transforms and distance metrics (one quoted arg)
+  MODE         show (default) | silent   (silent saves PNG/PDF/SVG)
+
+Web options:
+  --host HOST   bind address (default 127.0.0.1)
+  --port PORT   bind port    (default 5005)
+
+Examples:
+  cpsv "Ag.csv Cu.csv" "log_transform equalize_hist Euclidean" silent
+  cpsv gui
+  cpsv web --port 6789
+```
+
+### Web Interface
+
+The web interface provides an elegant browser-based experience with drag-and-drop file upload and interactive Plotly visualizations.
+
+```bash
+cpsv web --port 6789
+```
+
+Then open <http://127.0.0.1:6789> in your browser. `--host` (default `127.0.0.1`) and `--port` (default `5005`) are both optional.
+
+Features in the web version:
+
+- Drag-and-drop CSV/XLSX files (each file is one element/component)
+- **Dark / light themes** with a header toggle — follows your OS preference, remembers your choice (like the GeoPyTool blog)
+- **Map Viewer** — full-scan element maps at the true data aspect ratio (every cell is a strict square, no stretching):
+  - flip through datasets one by one with prev / next
+  - render as **Raw**, **Enhanced** (equalise + normalise) or **Filtered** (sobel/unsharp)
+  - **Wipe compare**: pick any two datasets, drag the divider left / right to reveal one map over the other
+- 12 processing transforms including spatial filters (gaussian / median / sobel / unsharp, plus normalise / percentile-clip)
+- Select any of the 26 distance metrics and view the pairwise heatmap
+- Overlay modes: RGB composite, alpha blend, difference, ratio
+- Statistics: PCA scatter, Pearson/Spearman correlation heatmap, descriptive stats, ANOVA
+- Comparison: PCA, t-SNE, UMAP embeddings, dendrogram, K-means clustering
+- Image quality metrics: PSNR, entropy, CEI, Tenengrad, SSIM across all transforms
+- **AODA continuous optimisation** — Box-Cox power exponent is tuned by combining golden-section search and the secant (quasi-Newton) method; whichever achieves the higher Discrimination Power Score wins
+- Result caching makes repeated tab visits instantaneous
+
+The GUI and CLI share the same transforms, filters and square-cell rendering:
+the GUI adds a **Wipe Compare** action (select two datasets, drag the slider),
+and both use `aspect='equal'` so element maps keep their true proportions.
+
+The GUI mirrors the Web Map Viewer — full-scan element maps at the true data
+aspect ratio (every cell a strict square), step through datasets with the
+**<** / **>** buttons, render as **raw / enhanced / filtered**, and compare any
+two datasets by switching the mode to **wipe** and dragging the slider.  The
+GUI follows the native system theme automatically (no forced light/dark).
+
+There is a **Load Sample** button in the header if you want to try without your own data.
+
+### Adaptive Optimisation (AODA)
+
+The adaptive search treats preprocessing as a continuous Box-Cox power transform
+and maximises the Discrimination Power Score (DPS) with two classic line-search
+optimisers:
+
+- **Golden-section search** — robust, derivative-free bracketing on a unimodal DPS curve
+- **Secant method** — quasi-Newton root-finding on the DPS derivative for superlinear convergence
+
+Both run on the same bracket; the method that reaches the higher DPS is kept and
+labelled as the winner in the UI. A cheap multi-exponent pre-screen ranks the
+distance metrics first, so only the top candidates get the full optimisation —
+this keeps the whole search fast even on large LA-ICP-MS matrices.
 
 ### Graphical User Interface (GUI)
 
-After the installation, you can run the application by executing the following commands to run a GUI:
+After the installation, launch the GUI with:
 
 ```bash
-python -c "import cpsvisualizer;cpsvisualizer.gui()"
+cpsv gui
 ```
 
 Then there will come the GUI, which will look like this:
@@ -291,12 +406,12 @@ The GUI is really quite straightforward, just check it out and you will be able 
 
 ### Command-Line Interface (CLI)
 
-Alternatively, you can run the application from the command line:
+Alternatively, you can run the application from the command line (`cpsv` defaults to the CLI):
 
 ```bash
 cd path/to/data/files # always cd to the location of your data files first
-python -c "import cpsvisualizer;cpsvisualizer.cli('Ag.csv Cu.csv Zn.csv Fe.csv', 'log_transform papa pupu pipi popo equalize_hist Euclidean Yule', 'silent')" # silent mode
-python -c "import cpsvisualizer;cpsvisualizer.cli('Ag.csv Cu.csv Zn.csv Fe.csv', 'log_transform papa pupi pipi popo equalize_hist Euclidean Yule', 'show')" # show the plot
+cpsv "Ag.csv Cu.csv Zn.csv Fe.csv" "log_transform equalize_hist Euclidean Yule" silent   # silent mode (saves PNG/PDF/SVG)
+cpsv "Ag.csv Cu.csv Zn.csv Fe.csv" "log_transform equalize_hist Euclidean Yule" show     # show the plot
 ```
 
 As shown above, the command line interface takes three arguments: the path to the data files, the processing methods, and the mode (silent or show).
@@ -319,7 +434,7 @@ The CLI silent mode will output the following information to the console:
 
 ```bash
 (base) hadoop@hadoop:~$ cd Desktop
-(base) hadoop@hadoop:~/Desktop$ python -c "import cpsvisualizer;cpsvisualizer.cli('Ag.csv Cu.csv Zn.csv Fe.csv', 'log_transform papa pupu pipi popo equalize_hist Euclidean Yule', 'silent')"
+(base) hadoop@hadoop:~/Desktop$ cpsv "Ag.csv Cu.csv Zn.csv Fe.csv" "log_transform equalize_hist Euclidean Yule" silent
 Data Files are :  ['Ag.csv', 'Cu.csv', 'Zn.csv', 'Fe.csv']
 Trans Functions are: ['log_transform', 'equalize_hist']
 Distance Calculations are: ['Euclidean', 'Yule']
@@ -343,7 +458,7 @@ The CLI show mode will output the following information to the console:
 
 ```bash
 (base) hadoop@hadoop:~$ cd Desktop
-(base) hadoop@hadoop:~/Desktop$ python -c "import cpsvisualizer;cpsvisualizer.cli('Ag.csv Cu.csv Zn.csv Fe.csv', 'log_transform papa pupu pipi popo equalize_hist Euclidean Yule', 'show')"
+(base) hadoop@hadoop:~/Desktop$ cpsv "Ag.csv Cu.csv Zn.csv Fe.csv" "log_transform equalize_hist Euclidean Yule" show
 Data Files are :  ['Ag.csv', 'Cu.csv', 'Zn.csv', 'Fe.csv']
 Trans Functions are: ['log_transform', 'equalize_hist']
 Distance Calculations are: ['Euclidean', 'Yule']

@@ -162,3 +162,8 @@ cython_debug/
 #.idea/
 *.csv
 .DS_Store
+
+# Generated figures / build artifacts
+CPS-Visualizer/
+figures/
+cpsvisualizer/figures/

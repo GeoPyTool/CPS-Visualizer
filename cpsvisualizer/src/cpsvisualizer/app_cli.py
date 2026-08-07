@@ -1,5 +1,5 @@
 """
-CPS-Visualizer CLI — command-line interface for batch-processing
+CPS-Visualizer CLI - command-line interface for batch-processing
 LA-ICP-MS surface scan data with transforms, distance computation, and
 vector-graphics output.
 """
@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 from cpsvisualizer.core import (
     TRANSFORM_FUNCTIONS, DISTANCE_FUNCTIONS, DISTANCE_NAMES,
     load_data_files, apply_transforms, compute_pairwise_matrix,
+    display_scale, ink_colormap, FIG_BG,
 )
 from cpsvisualizer.statistics import (
     compute_pca, compute_pearson_correlation_matrix,
@@ -47,6 +48,33 @@ def _subplot_grid(n):
     cols = int(math.ceil(math.sqrt(n)))
     rows = int(math.ceil(n / cols))
     return rows, cols
+
+
+def _square_aspect(n_rows, n_cols):
+    """Matplotlib aspect that renders the whole plot as a square."""
+    if n_rows == 0 or n_cols == 0:
+        return 1.0
+    return float(n_cols) / float(n_rows)
+
+
+def _downsample_cli(arr, max_rows=120, max_cols=200):
+    """Vectorized block-average downsample."""
+    import numpy as np
+    r, c = arr.shape
+    if r <= max_rows and c <= max_cols:
+        return np.ascontiguousarray(arr)
+    sr = max(1, int(math.ceil(r / max_rows)))
+    sc = max(1, int(math.ceil(c / max_cols)))
+    nr = int(math.ceil(r / sr))
+    nc = int(math.ceil(c / sc))
+    pr = nr * sr - r
+    pc = nc * sc - c
+    if pr > 0 or pc > 0:
+        arr = np.pad(arr, ((0, pr), (0, pc)), mode='edge')
+    if not np.isfinite(arr).all():
+        arr = np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
+    return np.ascontiguousarray(
+        arr[:nr * sr, :nc * sc].reshape(nr, sr, nc, sc).mean(axis=(1, 3)))
 
 
 def _clean_name(path):
@@ -100,18 +128,40 @@ class CPS_CLI:
         if func_names is None:
             func_names = DISTANCE_NAMES
         out_dir = os.getcwd()
+        # downsample + align all datasets to a common shape so pairwise
+        # distance functions work even when input matrices differ in size
+        aligned = self._align_datasets(self.df_list)
         for fn in func_names:
             if fn not in DISTANCE_DISPATCH:
                 continue
             if fn not in self.result_df_dict:
                 self.result_df_dict[fn] = compute_pairwise_matrix(
-                    self.df_list, self.df_name_list, DISTANCE_DISPATCH[fn])
+                    aligned, self.df_name_list, DISTANCE_DISPATCH[fn])
             path = os.path.join(out_dir, f'{fn}.csv')
             try:
                 self.result_df_dict[fn].to_csv(path, encoding='utf-8')
-                print(f'{fn} → {path}')
+                print(f'{fn} -> {path}')
             except Exception as e:
                 print(f'{fn} save failed: {e}')
+
+    @staticmethod
+    def _align_datasets(df_list, max_rows=120, max_cols=200):
+        """Downsample and pad all datasets to a common shape."""
+        import numpy as np
+        from cpsvisualizer.app_cli import _downsample_cli
+        downsampled = [pd.DataFrame(_downsample_cli(df.to_numpy(), max_rows, max_cols))
+                       for df in df_list]
+        if not downsampled:
+            return downsampled
+        common_cols = max(d.shape[1] for d in downsampled)
+        aligned = []
+        for d in downsampled:
+            if d.shape[1] < common_cols:
+                pad = pd.DataFrame(np.zeros((d.shape[0], common_cols - d.shape[1])))
+                aligned.append(pd.concat([d, pad], axis=1).iloc[:, :common_cols])
+            else:
+                aligned.append(d)
+        return aligned
 
     # ------------------------------------------------------------------
     # Plotting
@@ -124,6 +174,7 @@ class CPS_CLI:
         rows, cols = _subplot_grid(n)
         figsize = (3 * cols, 3 * rows)
         fig, axes = plt.subplots(rows, cols, figsize=figsize)
+        fig.patch.set_facecolor(FIG_BG)
         if rows == 1 and cols == 1:
             axes = np.array([[axes]])
         elif rows == 1:
@@ -132,7 +183,10 @@ class CPS_CLI:
             r, c = i // cols, i % cols
             ax = axes[r, c]
             arr = self.trans_df_list[i].to_numpy()
-            ax.imshow(arr, cmap='gray', aspect='auto')
+            s, lo, hi = display_scale(arr)
+            ax.set_facecolor(FIG_BG)
+            ax.imshow(s, cmap=ink_colormap(), vmin=lo, vmax=hi,
+                      aspect=_square_aspect(*arr.shape))
             info = '\n'.join(self.trans_applied.get(name, []))
             ax.set_title(f'{name}\n{info}', fontsize=9)
         # Hide unused subplots
@@ -152,9 +206,9 @@ class CPS_CLI:
         plt.savefig(f'{base}.png', dpi=600)
         plt.savefig(f'{base}.pdf')
         plt.savefig(f'{base}.svg')
-        print(f'PNG → {base}.png')
-        print(f'PDF → {base}.pdf')
-        print(f'SVG → {base}.svg')
+        print(f'PNG -> {base}.png')
+        print(f'PDF -> {base}.pdf')
+        print(f'SVG -> {base}.svg')
         plt.close()
 
 

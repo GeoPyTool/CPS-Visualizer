@@ -673,6 +673,80 @@ class TestEdgeCases:
         a = _df(30, 5)
         a.iloc[0, 0] = np.nan
         b = _df(30, 5).fillna(0)
-        # Should not crash
         val = mutual_info_score_unflattern(a.fillna(0), b)
         assert isinstance(val, float)
+
+
+# ===================================================================
+# ADAPTIVE MODULE (AODA)
+# ===================================================================
+class TestAdaptive:
+    def test_dps_perfect_separation(self):
+        from cpsvisualizer.adaptive import discrimination_power_score
+        # Perfectly separated: off-diag=10, diag=0
+        mat = pd.DataFrame([[0, 10, 10], [10, 0, 10], [10, 10, 0]], dtype=float)
+        dps = discrimination_power_score(mat)
+        assert dps == 1.0
+
+    def test_dps_random(self):
+        from cpsvisualizer.adaptive import discrimination_power_score
+        # Random small distances
+        mat = pd.DataFrame(np.random.uniform(0, 1, (5, 5)))
+        np.fill_diagonal(mat.values, 0)
+        dps = discrimination_power_score(mat)
+        assert 0 <= dps <= 1
+
+    def test_dps_two_samples(self):
+        from cpsvisualizer.adaptive import discrimination_power_score
+        mat = pd.DataFrame([[0, 5.0], [5.0, 0]])
+        dps = discrimination_power_score(mat)
+        assert dps == 0.0  # n < 3 returns 0
+
+    def test_dps_stability(self):
+        from cpsvisualizer.adaptive import discrimination_stability
+        mat = pd.DataFrame([
+            [0, 10, 12, 9],
+            [10, 0, 11, 8],
+            [12, 11, 0, 7],
+            [9, 8, 7, 0],
+        ], dtype=float)
+        mean_dps, std_dps, cv = discrimination_stability(mat, n_bootstrap=50)
+        assert 0 <= mean_dps <= 1
+        assert std_dps >= 0
+
+    def test_find_optimal_pipeline(self):
+        from cpsvisualizer.adaptive import find_optimal_pipeline
+        dfs = _df_list(4, 20, 15)
+        names = _names(4)
+        # Test with a subset of pipelines and metrics for speed
+        result = find_optimal_pipeline(
+            dfs, names,
+            pipelines=[['log_transform'], ['equalize_hist']],
+            metrics=None,  # use default
+            n_jobs=1, verbose=False
+        )
+        assert len(result) > 0
+        assert 'pipeline' in result.columns
+        assert 'metric' in result.columns
+        assert 'dps' in result.columns
+        assert result['dps'].max() > 0
+
+    def test_comprehensive_benchmark(self):
+        from cpsvisualizer.adaptive import compute_comprehensive_benchmark, benchmark_summary_table
+        dfs = _df_list(5, 20, 15)
+        names = _names(5)
+        result = compute_comprehensive_benchmark(dfs, names, n_jobs=1)
+        assert 'aoda' in result
+        assert 'pca_space' in result
+        assert 'raw_baseline' in result
+        tbl = benchmark_summary_table(result)
+        assert len(tbl) > 0
+
+    def test_aoda_improves_over_baseline(self):
+        from cpsvisualizer.adaptive import find_optimal_pipeline
+        dfs = _df_list(5, 30, 20)
+        names = _names(5)
+        result = find_optimal_pipeline(dfs, names, n_jobs=1, verbose=False)
+        best_dps = result.iloc[0]['dps']
+        # AODA-optimal should outperform raw Euclidean baseline
+        assert best_dps > 0.4

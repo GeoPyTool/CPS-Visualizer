@@ -1,4 +1,47 @@
 # CPS-Visualizer Release Notes
+## 1.2.1 (8 Aug 2026)
+
+### Major Features
+* **`cpsv` unified command** — `pip install -e ./` in the `cpsvisualizer/` directory registers a system `cpsv` entry point:
+  `cpsv` (default = batch CLI), `cpsv gui`, `cpsv web --port 6789`
+* New packaging via modern setuptools `pyproject.toml` (editable install supported)
+* **Grayscale-ink visualization** for element maps: minimum values are colourless (transparent) and only the deepest values render as dark grayscale; robust `display_scale` (log1p + percentile window) prevents outliers from flattening the maps
+* **Distance panel** now shows a 2x3 grid of six representative normalized (0-1) distance heatmaps at once
+* **Comparison pane** redesigned as a 2x2 grid of square PCA / t-SNE / UMAP / K-Means scatter plots with a full-width dendrogram on top
+* Cross-shape datasets (Geology, Bivalve shell, Tissue) can now be compared together — each matrix is flattened and resampled to a common length for PCA / t-SNE / UMAP and distance metrics
+* Element-map and distance screenshots are generated per DataSample sub-directory (Geology / Bivalve / Tissue)
+
+### Fixes
+* Render Mode combo now actually updates the active render mode (enhanced / filtered were silently ignored before)
+* Empty-data guards in the distance heatmap / `display_scale` prevent crashes on clear/reload
+* Cleaner element naming in the GUI (full file stem is kept, so `Tissue_Fe57` no longer collides with `Tissue_P31`)
+
+
+## 1.3.0 (7 Aug 2026)
+
+### Major Features
+* **Cross-disciplinary sample suite** — public LA-ICP-MS element/Ca growth-line profiles of bivalve shells (cockle & clam) from Zenodo (DOI 10.5281/zenodo.18873283), demonstrating applicability beyond geology
+* Web "Load Sample" menu now offers both geological and marine-biology sample suites
+* Sample endpoint `POST /api/sample/<id>` loads bundled data directories server-side
+* Distance endpoint downsamples + aligns datasets to a common shape so cross-shaped samples compare cleanly
+
+## 1.2.0 (7 Aug 2026)
+
+### Major Features
+* New `web.py` — Flask web interface with drag-and-drop upload, dark/light themes, Plotly visualisations
+* **Map Viewer** — full-scan element maps at true data aspect ratio (strict square cells), dataset cycling, Raw / Enhanced / Filtered render modes, and a **wipe compare** that drags a divider across any two maps
+* 6 new spatial filters / normalisers shared by all interfaces: gaussian_filter, median_filter, sobel_gradient, unsharp_mask, normalize_01, clip_percentile
+* **AODA continuous optimisation** — Box-Cox power exponent tuned by combining golden-section search and secant (quasi-Newton) method; the higher-DPS winner is reported; cheap metric pre-screening keeps it fast
+* Endpoint result caching (versioned, LRU-capped) — repeated tab visits return instantly
+
+### Improvements
+* Square-cell rendering everywhere: GUI / CLI / `visualization.py` now use `aspect='equal'`
+* GUI adds **Wipe Compare** toolbar action (two datasets + draggable slider)
+* **GUI Map Viewer** — mirrors the Web interface: step datasets with ‹/›, render raw / enhanced / filtered, wipe-compare any two maps with a draggable divider; follows the native system theme
+* GUI gains Analysis tabs (Statistics / Comparison / Image Quality / AODA) with PCA, correlation, t-SNE, UMAP, dendrogram, K-means, quality bars and AODA continuous optimisation
+* Web map plots set explicit `width`/`height` from the true data aspect ratio so square data renders square
+* Vectorized `_downsample` (block-mean via reshape) replaces the Python double loop
+* Web distance/all, comparison, metrics, adaptive and benchmark endpoints are cached
 
 ## 1.1.0 (7 Aug 2026)
 

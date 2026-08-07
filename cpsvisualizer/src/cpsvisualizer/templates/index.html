@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b1220">
+<title>CPS-Visualizer Web</title>
+<script>
+  (function () {
+    try {
+      var root = document.documentElement;
+      var saved = localStorage.getItem('theme');
+      var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var theme = saved || (prefersDark ? 'dark' : 'light');
+      root.setAttribute('data-theme', theme);
+      if (!saved && window.matchMedia && window.matchMedia.addEventListener) {
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function (ev) {
+          if (!localStorage.getItem('theme')) root.setAttribute('data-theme', ev.matches ? 'dark' : 'light');
+        });
+      }
+    } catch (e) {}
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
+<style>
+  :root{ --radius:12px; }
+  html[data-theme="dark"]{
+    --bg:#0b1220; --bg2:#111a2e; --bg3:#1a2440; --panel:#0f1830; --card:#16203a;
+    --border:#263250; --text:#e4e7ef; --muted:#8b91a7; --accent:#6c8cff;
+    --accent2:#7c5cff; --ok:#3ddc84; --warn:#ffb547; --err:#ff6b6b;
+    --shadow:0 8px 30px rgba(0,0,0,.45); --grid:#1c2742; --grid-strong:#2a3a5e;
+    --handle:#fff; --track:#000;
+  }
+  html[data-theme="light"]{
+    --bg:#f5f6fa; --bg2:#ffffff; --bg3:#eef0f6; --panel:#ffffff; --card:#ffffff;
+    --border:#dde2ec; --text:#1f2430; --muted:#6a7184; --accent:#4060d8;
+    --accent2:#6b3fd0; --ok:#1a9e5c; --warn:#c78a0a; --err:#d64545;
+    --shadow:0 8px 30px rgba(31,36,48,.12); --grid:#eef1f8; --grid-strong:#d6dcea;
+    --handle:#fff; --track:#000;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);
+    background-image:radial-gradient(1200px 600px at 80% -10%,rgba(124,92,255,.10),transparent),
+                     radial-gradient(900px 500px at -10% 110%,rgba(108,140,255,.08),transparent);
+    min-height:100vh;transition:background .3s,color .3s;
+  }
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:var(--bg2)}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:6px}
+  ::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+  button{font-family:inherit;cursor:pointer;border:none;outline:none}
+  select{font-family:inherit;outline:none}
+  .mono{font-family:'JetBrains Mono',monospace}
+
+  /* ---------- Layout ---------- */
+  .app{display:grid;grid-template-rows:60px 1fr;height:100vh}
+  header{
+    display:flex;align-items:center;gap:14px;padding:0 22px;
+    background:color-mix(in srgb, var(--bg2) 92%, transparent);
+    backdrop-filter:blur(12px);border-bottom:1px solid var(--border);z-index:10;
+  }
+  .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;letter-spacing:.3px;white-space:nowrap}
+  .logo .mark{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+    display:grid;place-items:center;color:#fff;box-shadow:0 4px 14px rgba(108,140,255,.4)}
+  .logo .mark i{font-size:14px}
+  .badge{font-size:10px;padding:3px 8px;border-radius:20px;background:var(--bg3);color:var(--muted);font-weight:500}
+  .spacer{flex:1}
+  .head-btn{background:var(--bg3);color:var(--text);padding:8px 14px;border-radius:8px;font-size:13px;
+    display:flex;align-items:center;gap:7px;transition:.18s;border:1px solid var(--border)}
+  .head-btn:hover{transform:translateY(-1px);border-color:var(--accent)}
+  .head-btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none}
+  .head-btn.primary:hover{box-shadow:0 6px 18px rgba(108,140,255,.45)}
+  .theme-toggle{width:36px;height:36px;border-radius:9px;background:var(--bg3);color:var(--text);
+    border:1px solid var(--border);display:grid;place-items:center;font-size:16px;transition:.18s}
+  .theme-toggle:hover{border-color:var(--accent);transform:translateY(-1px)}
+
+  main{display:grid;grid-template-columns:340px 1fr;overflow:hidden}
+  aside{background:var(--panel);border-right:1px solid var(--border);overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:18px}
+  .section-title{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);
+    font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .section-title i{color:var(--accent)}
+
+  /* ---------- Drop zone ---------- */
+  .dropzone{border:2px dashed var(--border);border-radius:var(--radius);padding:26px 16px;text-align:center;
+    transition:.2s;background:var(--bg2);cursor:pointer}
+  .dropzone:hover,.dropzone.drag{border-color:var(--accent);background:rgba(108,140,255,.08)}
+  .dropzone i{font-size:28px;color:var(--muted);margin-bottom:10px}
+  .dropzone p{font-size:13px;color:var(--muted)}
+  .dropzone p b{color:var(--text)}
+  .dropzone .hint{font-size:11px;color:var(--muted);margin-top:6px;opacity:.7}
+
+  /* ---------- Dataset list ---------- */
+  .ds-list{display:flex;flex-direction:column;gap:6px}
+  .ds-item{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px 11px;
+    display:flex;align-items:center;gap:10px;font-size:13px;transition:.15s;cursor:pointer;user-select:none}
+  .ds-item:hover{border-color:var(--accent)}
+  .ds-item.selected{border-color:var(--accent);background:rgba(108,140,255,.12);box-shadow:0 0 0 1px var(--accent)}
+  .ds-item input{accent-color:var(--accent);width:16px;height:16px;pointer-events:none}
+  .ds-item .nm{flex:1;font-weight:500}
+  .ds-item .sh{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+  .ds-item .rm{color:var(--err);opacity:0;transition:.15s;padding:4px;cursor:pointer;font-size:12px;pointer-events:auto}
+  .ds-item:hover .rm{opacity:.7}
+  .ds-item .rm:hover{opacity:1}
+
+  /* ---------- Chips ---------- */
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:6px 12px;
+    font-size:12px;color:var(--muted);transition:.15s;user-select:none;display:flex;align-items:center;gap:6px}
+  .chip:hover{border-color:var(--accent);color:var(--text)}
+  .chip.active{background:linear-gradient(135deg,rgba(108,140,255,.25),rgba(124,92,255,.25));
+    border-color:var(--accent);color:var(--text);font-weight:500}
+  .chip .dot{width:6px;height:6px;border-radius:50%;background:var(--muted)}
+  .chip.active .dot{background:var(--ok)}
+  .chip .idx{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;
+    background:var(--bg3);padding:1px 5px;border-radius:8px}
+  .chip.active .idx{color:var(--accent);background:rgba(108,140,255,.15)}
+
+  select,.input{width:100%;background:var(--bg2);color:var(--text);border:1px solid var(--border);
+    border-radius:8px;padding:9px 11px;font-size:13px;outline:none;transition:.15s}
+  select:focus,.input:focus{border-color:var(--accent)}
+  select option{background:var(--bg2)}
+
+  .btn{padding:9px 14px;border-radius:8px;font-size:13px;font-weight:500;transition:.15s;
+    display:inline-flex;align-items:center;gap:7px}
+  .btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+  .btn.primary:hover{box-shadow:0 5px 16px rgba(108,140,255,.4);transform:translateY(-1px)}
+  .btn.ghost{background:var(--bg3);color:var(--text);border:1px solid var(--border)}
+  .btn.ghost:hover{border-color:var(--accent)}
+  .btn.sm{padding:6px 10px;font-size:12px}
+  .row{display:flex;gap:8px;align-items:center}
+
+  /* ---------- Content ---------- */
+  .content{overflow-y:auto;padding:22px;display:flex;flex-direction:column;gap:18px}
+  .tabs{display:flex;gap:4px;background:var(--panel);padding:5px;border-radius:10px;
+    border:1px solid var(--border);overflow-x:auto}
+  .tab{padding:8px 16px;border-radius:7px;font-size:13px;color:var(--muted);white-space:nowrap;
+    transition:.15s;display:flex;align-items:center;gap:7px}
+  .tab:hover{color:var(--text);background:var(--bg3)}
+  .tab.active{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-weight:500}
+  .tab i{font-size:12px}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px;box-shadow:var(--shadow)}
+  .card h3{font-size:14px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .card h3 i{color:var(--accent)}
+  .card .sub{font-size:11px;color:var(--muted);font-weight:400;margin-left:auto}
+  .plot{width:100%;min-height:420px}
+
+  .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:60px 20px;color:var(--muted);text-align:center}
+  .empty i{font-size:46px;margin-bottom:14px;opacity:.4}
+  .empty p{font-size:14px;margin-bottom:4px}
+  .empty small{font-size:12px;opacity:.7}
+
+  /* ---------- Map viewer ---------- */
+  .viewer-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+  .nav-group{display:inline-flex;background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .nav-group button{padding:8px 14px;background:transparent;color:var(--text);font-size:13px;transition:.15s;display:flex;align-items:center;gap:6px}
+  .nav-group button:hover:not(:disabled){background:var(--accent);color:#fff}
+  .nav-group button:disabled{opacity:.35;cursor:default}
+  .nav-group .cur{background:var(--bg3);font-family:'JetBrains Mono',monospace;font-size:12px;padding:0 12px;display:flex;align-items:center}
+  .seg{display:inline-flex;background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .seg button{padding:8px 14px;background:transparent;color:var(--muted);font-size:12px;transition:.15s;display:flex;align-items:center;gap:6px}
+  .seg button.active{background:var(--accent);color:#fff}
+  .seg button:hover:not(.active){color:var(--text)}
+
+  .map-stage{position:relative;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);
+    overflow:auto;padding:10px;min-height:480px}
+  .map-frame{position:relative;margin:0 auto;display:block}
+  .map-frame .plot{min-height:0}
+  .map-label{position:absolute;top:14px;left:14px;background:rgba(11,18,32,.72);color:#fff;padding:6px 12px;
+    border-radius:8px;font-size:13px;font-weight:600;backdrop-filter:blur(6px);z-index:5;pointer-events:none;
+    box-shadow:0 2px 8px rgba(0,0,0,.3)}
+  html[data-theme="light"] .map-label{background:rgba(255,255,255,.85);color:#1f2430}
+  .map-label .tag{opacity:.75;font-weight:400;margin-left:6px;font-size:11px;font-family:'JetBrains Mono',monospace}
+
+  /* wipe slider */
+  .wipe-stage{position:relative;cursor:ew-resize;margin:0 auto;display:block}
+  .wipe-stage #mapWipeA{width:100%;height:100%;display:block}
+  .wipe-stage #mapWipeB{position:absolute;top:0;left:0;z-index:4;pointer-events:none}
+  .wipe-line{position:absolute;top:0;bottom:0;width:3px;background:var(--warn);z-index:5;pointer-events:none;
+    box-shadow:0 0 10px rgba(255,181,71,.6)}
+  .wipe-line::after{content:'<->';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    background:var(--warn);color:#000;border-radius:50%;width:34px;height:34px;display:grid;place-items:center;
+    font-size:16px;font-weight:700}
+
+  /* ---------- Tables / status ---------- */
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+  td{font-family:'JetBrains Mono',monospace}
+  tr:hover td{background:rgba(108,140,255,.05)}
+  .pill{padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+  .pill.ok{background:rgba(61,220,132,.15);color:var(--ok)}
+  .pill.warn{background:rgba(255,181,71,.15);color:var(--warn)}
+
+  .status{position:fixed;bottom:14px;right:20px;background:var(--card);border:1px solid var(--border);
+    padding:8px 14px;border-radius:20px;font-size:12px;color:var(--muted);box-shadow:var(--shadow);
+    display:flex;align-items:center;gap:8px;z-index:50;transition:.2s}
+  .status .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+  .status.busy .dot{background:var(--warn);animation:pulse 1s infinite}
+  .status.ready .dot{background:var(--ok)}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+  .toast{position:fixed;top:80px;right:20px;background:var(--card);border:1px solid var(--border);
+    padding:12px 18px;border-radius:10px;box-shadow:var(--shadow);z-index:100;font-size:13px;
+    transform:translateX(420px);transition:.3s;max-width:360px}
+  .toast.show{transform:translateX(0)}
+  .toast.err{border-color:var(--err);color:var(--err)}
+  .toast.ok{border-color:var(--ok);color:var(--ok)}
+  .hide{display:none!important}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo"><div class="mark"><i class="fa-solid fa-wave-square"></i></div>
+      CPS-Visualizer <span class="badge">Web</span></div>
+    <div class="spacer"></div>
+    <button class="theme-toggle" id="themeToggle" title="Toggle dark mode">🌙</button>
+    <select class="input" id="btnSample" style="width:auto;padding:8px 12px;font-size:13px">
+      <option value="">Load Sample…</option>
+    </select>
+    <button class="head-btn ghost" id="btnClear"><i class="fa-solid fa-trash"></i> Clear</button>
+    <button class="head-btn primary" id="btnRun"><i class="fa-solid fa-play"></i> Run Analysis</button>
+  </header>
+
+  <main>
+    <aside>
+      <div>
+        <div class="section-title"><i class="fa-solid fa-cloud-arrow-up"></i> Data Files</div>
+        <div class="dropzone" id="dropzone">
+          <i class="fa-solid fa-file-arrow-up"></i>
+          <p><b>Drop CSV / XLSX here</b></p>
+          <p>or click to browse</p>
+          <div class="hint">Each file = one element/component</div>
+        </div>
+        <input type="file" id="fileInput" multiple accept=".csv,.xls,.xlsx" class="hide">
+        <div class="ds-list" id="dsList" style="margin-top:12px"></div>
+      </div>
+
+      <div>
+        <div class="section-title"><i class="fa-solid fa-wand-magic-sparkles"></i> Processing Pipeline
+          <span style="margin-left:auto;font-size:10px" id="transOrder"></span></div>
+        <div class="chips" id="transChips"></div>
+        <p style="font-size:10px;color:var(--muted);margin-top:8px">Raw | enhanced | filtered - applied in order, live on the map</p>
+      </div>
+
+      <div>
+        <div class="section-title"><i class="fa-solid fa-ruler"></i> Distance Metric</div>
+        <select id="metricSel"></select>
+      </div>
+
+      <div>
+        <div class="section-title"><i class="fa-solid fa-layer-group"></i> Overlay Mode</div>
+        <select id="overlayMode">
+          <option value="rgb">RGB Composite (first 3)</option>
+          <option value="alpha">Alpha Blend (average)</option>
+          <option value="difference">Difference (1st - 2nd)</option>
+          <option value="ratio">Ratio (1st / 2nd)</option>
+        </select>
+      </div>
+
+      <div style="margin-top:auto;font-size:11px;color:var(--muted);text-align:center;opacity:.7">
+        CPS-Visualizer | LA-ICP-MS
+      </div>
+    </aside>
+
+    <div class="content">
+      <div class="tabs" id="tabs">
+        <button class="tab active" data-tab="viewer"><i class="fa-solid fa-map"></i> Map Viewer</button>
+        <button class="tab" data-tab="distance"><i class="fa-solid fa-table-cells"></i> Distance</button>
+        <button class="tab" data-tab="overlay"><i class="fa-solid fa-layer-group"></i> Overlay</button>
+        <button class="tab" data-tab="stats"><i class="fa-solid fa-chart-line"></i> Statistics</button>
+        <button class="tab" data-tab="compare"><i class="fa-solid fa-diagram-project"></i> Comparison</button>
+        <button class="tab" data-tab="quality"><i class="fa-solid fa-image"></i> Image Quality</button>
+        <button class="tab" data-tab="adaptive"><i class="fa-solid fa-brain"></i> AODA</button>
+      </div>
+
+      <!-- ==================== MAP VIEWER ==================== -->
+      <div id="tab-viewer" class="tab-pane">
+        <div class="card">
+          <h3><i class="fa-solid fa-map"></i> Element Map
+            <span class="sub" id="mapInfo"></span></h3>
+          <div class="viewer-toolbar">
+            <div class="nav-group">
+              <button id="mapPrev" title="Previous dataset"><i class="fa-solid fa-chevron-left"></i></button>
+              <div class="cur" id="mapCounter">- / -</div>
+              <button id="mapNext" title="Next dataset"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+            <div class="seg" id="mapMode">
+              <button data-mode="single" class="active"><i class="fa-solid fa-eye"></i> Single</button>
+              <button data-mode="wipe"><i class="fa-solid fa-object-group"></i> Compare (drag)</button>
+            </div>
+            <div class="seg" id="mapRender">
+              <button data-render="raw" class="active">Raw</button>
+              <button data-render="enhanced">Enhanced</button>
+              <button data-render="filtered">Filtered</button>
+            </div>
+          </div>
+
+          <div id="mapStage" class="map-stage">
+            <div class="empty" id="mapEmpty">
+              <i class="fa-solid fa-map-location-dot"></i>
+              <p>Drop data files to explore element maps</p>
+              <small>Each cell is a strict square - full scan range at true aspect ratio</small>
+            </div>
+            <div id="mapSingleWrap" class="hide">
+              <div class="map-frame" id="mapSingleFrame">
+                <div class="map-label" id="mapSingleLabel"></div>
+                <div id="mapSingle" class="plot"></div>
+              </div>
+            </div>
+            <div id="mapWipeWrap" class="hide">
+              <div class="wipe-stage" id="mapWipeStage">
+                <div class="map-label" id="mapWipeLabel">A vs B</div>
+                <div id="mapWipeA" class="plot"></div>
+                <div id="mapWipeB" class="plot"></div>
+                <div class="wipe-line" id="mapWipeLine"></div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap" id="comparePicks">
+            <select id="pickA" class="input" style="flex:1;min-width:160px"></select>
+            <select id="pickB" class="input" style="flex:1;min-width:160px"></select>
+            <button class="btn ghost" id="swapAB"><i class="fa-solid fa-arrows-rotate"></i> Swap</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== DISTANCE ==================== -->
+      <div id="tab-distance" class="tab-pane hide">
+        <div class="card"><h3><i class="fa-solid fa-table-cells"></i> Pairwise Distance Matrix
+          <span class="sub" id="distMetric"></span></h3>
+          <div id="distPlot" class="plot"></div></div>
+        <div class="card"><h3><i class="fa-solid fa-list"></i> All Metrics (26)</h3>
+          <div id="distAllPlots" class="grid" style="display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(320px,1fr))"></div></div>
+      </div>
+
+      <!-- ==================== OVERLAY ==================== -->
+      <div id="tab-overlay" class="tab-pane hide">
+        <div class="card"><h3><i class="fa-solid fa-layer-group"></i> Multi-Element Overlay</h3>
+          <div id="overlayPlot" class="plot"></div></div>
+      </div>
+
+      <!-- ==================== STATISTICS ==================== -->
+      <div id="tab-stats" class="tab-pane hide">
+        <div class="grid" style="display:grid;gap:16px;grid-template-columns:1fr 1fr">
+          <div class="card"><h3><i class="fa-solid fa-chart-line"></i> PCA Embedding</h3>
+            <div id="pcaPlot" class="plot"></div></div>
+          <div class="card"><h3><i class="fa-solid fa-link"></i> Pearson Correlation</h3>
+            <div id="corrPlot" class="plot"></div></div>
+        </div>
+        <div class="card"><h3><i class="fa-solid fa-square-poll-vertical"></i> Descriptive Statistics</h3>
+          <div id="statsTable"></div></div>
+        <div class="card"><h3><i class="fa-solid fa-flask-vial"></i> ANOVA / Kruskal-Wallis</h3>
+          <div id="anovaTable"></div></div>
+      </div>
+
+      <!-- ==================== COMPARISON ==================== -->
+      <div id="tab-compare" class="tab-pane hide">
+        <div class="grid" style="display:grid;gap:16px;grid-template-columns:1fr 1fr">
+          <div class="card"><h3><i class="fa-solid fa-circle-nodes"></i> PCA</h3><div id="cmpPca" class="plot"></div></div>
+          <div class="card"><h3><i class="fa-solid fa-network-wired"></i> t-SNE</h3><div id="cmpTsne" class="plot"></div></div>
+          <div class="card"><h3><i class="fa-solid fa-diagram-node"></i> UMAP</h3><div id="cmpUmap" class="plot"></div></div>
+          <div class="card"><h3><i class="fa-solid fa-tree"></i> Dendrogram</h3><div id="cmpDendro" class="plot"></div></div>
+        </div>
+        <div class="card"><h3><i class="fa-solid fa-tags"></i> K-Means Clustering</h3><div id="cmpKmeans" class="plot"></div></div>
+      </div>
+
+      <!-- ==================== IMAGE QUALITY ==================== -->
+      <div id="tab-quality" class="tab-pane hide">
+        <div class="card"><h3><i class="fa-solid fa-image"></i> Image Quality Metrics by Transform
+          <span class="sub">PSNR | Entropy | CEI | Tenengrad | SSIM</span></h3>
+          <div id="qualityPlot" class="plot" style="min-height:520px"></div></div>
+      </div>
+
+      <!-- ==================== AODA ==================== -->
+      <div id="tab-adaptive" class="tab-pane hide">
+        <div class="card"><h3><i class="fa-solid fa-brain"></i> AODA Continuous Optimisation
+          <span class="sub">Golden-Section vs Secant | Box-Cox power</span></h3>
+          <div id="aodaTable"></div></div>
+        <div class="card"><h3><i class="fa-solid fa-chart-column"></i> Top Metrics</h3>
+          <div id="aodaPlot" class="plot"></div></div>
+        <div class="card"><h3><i class="fa-solid fa-scale-balanced"></i> Comprehensive Benchmark</h3>
+          <div id="benchTable"></div></div>
+      </div>
+
+      <div class="empty hide" id="emptyState">
+        <i class="fa-solid fa-cloud-arrow-up"></i>
+        <p>No data loaded</p>
+        <small>Drop CSV/XLSX files on the left, or click <b>Load Sample</b></small>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="status" id="status"><div class="dot"></div><span id="statusText">Ready</span></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script>
+const API = '';
+const state = { methods:null, datasets:[], transforms:[], metric:'', overlay:'rgb',
+                viewer:{ mode:'single', render:'raw', idx:0, pickA:null, pickB:null, wipe:0.5 },
+                mapData:{} };
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+
+function toast(msg, type='ok'){
+  const t = $('#toast'); t.textContent = msg; t.className = 'toast show '+type;
+  setTimeout(()=>t.className='toast '+type, 2600);
+}
+function busy(b){ const s=$('#status'); s.className='status '+(b?'busy':'ready'); $('#statusText').textContent=b?'Working…':'Ready'; }
+function selectedNames(){ return $$('#dsList .ds-item input:checked').map(c=>c.value); }
+
+async function api(path, body, isForm){
+  busy(true);
+  try{
+    const opt = isForm ? {method:'POST', body} :
+      {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body||{})};
+    const r = await fetch(API+path, opt);
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error||('HTTP '+r.status));
+    return j;
+  } finally { busy(false); }
+}
+
+// ---- Theme-aware colors ----
+function T(){
+  const dark = document.documentElement.getAttribute('data-theme')!=='light';
+  return {
+    text: dark ? '#e4e7ef' : '#1f2430',
+    muted: dark ? '#8b91a7' : '#6a7184',
+    plotBg: dark ? '#0b1220' : '#ffffff',
+    grid: dark ? '#1c2742' : '#eef1f8',
+    accent: dark ? '#6c8cff' : '#4060d8',
+    colorscaleBg: dark ? 'Greys' : 'Greys',
+  };
+}
+
+// ---- Init ----
+async function init(){
+  state.methods = await (await fetch(API+'/api/methods')).json();
+  buildTransforms();
+  buildMetricSelect();
+  bindUI();
+  // populate sample selector
+  const ss = $('#btnSample');
+  (state.methods.samples||[]).forEach(s=>{
+    const o=document.createElement('option'); o.value=s.id; o.textContent='🧪 '+s.label; ss.appendChild(o);
+  });
+  showEmpty(true);
+}
+function showEmpty(b){ $('#emptyState').classList.toggle('hide', !b);
+  $$('.tab-pane').forEach(p=>p.classList.add('hide')); $('#tab-viewer').classList.remove('hide'); }
+
+// ---- Transforms chips ----
+function buildTransforms(){
+  const c = $('#transChips'); c.innerHTML='';
+  state.methods.transforms.forEach(t=>{
+    const el = document.createElement('div');
+    el.className='chip'; el.dataset.name=t;
+    el.innerHTML = `<span class="dot"></span>${t}<span class="idx"></span>`;
+    el.onclick = ()=>{
+      const idx = state.transforms.indexOf(t);
+      if(idx>=0) state.transforms.splice(idx,1);
+      else state.transforms.push(t);
+      el.classList.toggle('active');
+      [...c.children].forEach((ch)=>{
+        const n = ch.dataset.name; const oi = state.transforms.indexOf(n);
+        ch.querySelector('.idx').textContent = oi>=0?(oi+1):'';
+      });
+      $('#transOrder').textContent = state.transforms.length?state.transforms.join(' -> '):'';
+      if(state.datasets.length) refreshMap();
+    };
+    c.appendChild(el);
+  });
+}
+function buildMetricSelect(){
+  const s = $('#metricSel'); s.innerHTML='';
+  state.methods.distances.forEach(d=>{
+    const o = document.createElement('option'); o.value=d; o.textContent=d; s.appendChild(o);
+  });
+  state.metric = state.methods.distances[0];
+  s.onchange = ()=>{ state.metric=s.value; if(selectedNames().length) runDistance(); };
+}
+
+// ---- UI binding ----
+function bindUI(){
+  const tt = $('#themeToggle');
+  function refreshIcon(){
+    const dark = document.documentElement.getAttribute('data-theme')==='dark';
+    tt.textContent = dark ? '☀️' : '🌙';
+    tt.title = dark ? 'Switch to light' : 'Switch to dark';
+  }
+  refreshIcon();
+  tt.onclick = ()=>{
+    const cur = document.documentElement.getAttribute('data-theme');
+    const next = cur==='dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try{ localStorage.setItem('theme', next); }catch(e){}
+    refreshIcon();
+    if(state.datasets.length) refreshMap();
+  };
+
+  // tabs
+  $$('#tabs .tab').forEach(t=>t.onclick=()=>{
+    $$('#tabs .tab').forEach(x=>x.classList.remove('active')); t.classList.add('active');
+    $$('.tab-pane').forEach(p=>p.classList.add('hide'));
+    $('#tab-'+t.dataset.tab).classList.remove('hide');
+    $('#emptyState').classList.add('hide');
+    refreshTab(t.dataset.tab);
+  });
+
+  // dropzone
+  const dz = $('#dropzone'), fi = $('#fileInput');
+  dz.onclick = ()=>fi.click();
+  fi.onchange = ()=>{ if(fi.files.length) uploadFiles(fi.files); fi.value=''; };
+  ['dragover','dragenter'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.add('drag')}));
+  ['dragleave','drop'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.remove('drag')}));
+  dz.addEventListener('drop', ev=>{ if(ev.dataTransfer.files.length) uploadFiles(ev.dataTransfer.files); });
+
+  $('#overlayMode').onchange = e=>{ state.overlay=e.target.value; if(selectedNames().length) runOverlay(); };
+  $('#btnClear').onclick = async()=>{ await api('/api/clear',{}); refreshDatasets(); toast('Cleared'); showEmpty(true); };
+  $('#btnSample').onchange = async e=>{
+    const id = e.target.value;
+    if(!id) return;
+    e.target.value = '';
+    const r = await api('/api/sample/'+id, {});
+    toast('Loaded '+r.added.length+' sample file(s)','ok');
+    await refreshDatasets();
+    showEmpty(false);
+    $$('#tabs .tab')[0].click();
+    setTimeout(()=>{ if($$('#dsList .ds-item input:checked').length) refreshMap(); }, 200);
+  };
+  $('#btnRun').onclick = ()=>{ const t=$$('#tabs .tab.active')[0].dataset.tab; refreshTab(t); };
+
+  // Map viewer controls
+  $('#mapPrev').onclick = ()=>{ moveViewer(-1); };
+  $('#mapNext').onclick = ()=>{ moveViewer(1); };
+  $$('#mapMode .seg button, #mapMode button').forEach(b=>b.onclick=()=>{
+    state.viewer.mode = b.dataset.mode;
+    $$('#mapMode button').forEach(x=>x.classList.toggle('active', x===b));
+    refreshMap();
+  });
+  $$('#mapRender button').forEach(b=>b.onclick=()=>{
+    state.viewer.render = b.dataset.render;
+    $$('#mapRender button').forEach(x=>x.classList.toggle('active', x===b));
+    refreshMap();
+  });
+  $('#pickA').onchange = e=>{ state.viewer.pickA=e.target.value; refreshMap(); };
+  $('#pickB').onchange = e=>{ state.viewer.pickB=e.target.value; refreshMap(); };
+  $('#swapAB').onclick = ()=>{
+    const a=$('#pickA').value, b=$('#pickB').value;
+    $('#pickA').value=b; $('#pickB').value=a;
+    state.viewer.pickA=b; state.viewer.pickB=a;
+    refreshMap();
+  };
+}
+
+function moveViewer(delta){
+  const n = state.datasets.length;
+  if(!n) return;
+  state.viewer.idx = (state.viewer.idx + delta + n) % n;
+  const checked = $$('#dsList .ds-item input');
+  if(checked[state.viewer.idx]) checked[state.viewer.idx].checked = true;
+  refreshMap();
+}
+
+async function uploadFiles(files){
+  const fd = new FormData();
+  [...files].forEach(f=>fd.append('files', f));
+  const r = await api('/api/upload', fd, true);
+  toast('Loaded '+r.added.length+' file(s)');
+  await refreshDatasets();
+  showEmpty(false);
+  $$('#tabs .tab')[0].click();
+  setTimeout(()=>{ if($$('#dsList .ds-item input:checked').length) refreshMap(); }, 200);
+}
+
+// ---- Dataset list ----
+async function refreshDatasets(){
+  const ds = await (await fetch(API+'/api/datasets')).json();
+  state.datasets = ds;
+  const list = $('#dsList'); list.innerHTML='';
+  ds.forEach((d,i)=>{
+    const el = document.createElement('div'); el.className='ds-item'+(i===state.viewer.idx?' selected':'');
+    el.innerHTML = `<input type="checkbox" value="${d.name}" checked>
+      <div class="nm">${d.name}</div><div class="sh">${d.shape[0]}x${d.shape[1]}</div>
+      <i class="fa-solid fa-xmark rm" data-name="${d.name}"></i>`;
+    el.addEventListener('click', (e)=>{
+      if(e.target.classList.contains('rm')) return;
+      state.viewer.idx = i;
+      el.parentNode.querySelectorAll('.ds-item').forEach(x=>x.classList.remove('selected'));
+      el.classList.add('selected');
+      refreshMap();
+    });
+    el.querySelector('.rm').onclick = async(e)=>{
+      e.stopPropagation(); await api('/api/remove/'+encodeURIComponent(e.target.dataset.name),{});
+      refreshDatasets();
+    };
+    list.appendChild(el);
+  });
+  // fill compare pickers
+  const pa=$('#pickA'), pb=$('#pickB');
+  pa.innerHTML=''; pb.innerHTML='';
+  ds.forEach((d,i)=>{
+    const o=document.createElement('option'); o.value=d.name; o.textContent=d.name;
+    pa.appendChild(o);
+    const o2=document.createElement('option'); o2.value=d.name; o2.textContent=d.name;
+    pb.appendChild(o2);
+  });
+  if(ds.length>=2){ pb.selectedIndex=1; }
+  state.viewer.pickA = pa.value; state.viewer.pickB = pb.value;
+}
+
+// ---- RENDER PICK for map viewer ----
+function renderTransform(){
+  // raw -> no pipeline; enhanced -> equalize+normalize; filtered -> sobel/unsharp
+  const r = state.viewer.render;
+  if(r==='raw') return state.transforms;
+  if(r==='enhanced') return [...state.transforms, 'equalize_hist', 'normalize_01'];
+  return [...state.transforms, 'sobel_gradient', 'normalize_01'];
+}
+
+// ---- MAP VIEWER ----
+async function refreshMap(){
+  const ds = state.datasets;
+  if(!ds.length) return;
+  // clamp idx
+  state.viewer.idx = Math.min(Math.max(state.viewer.idx,0), ds.length-1);
+  const cur = ds[state.viewer.idx];
+  $('#mapCounter').textContent = (state.viewer.idx+1)+' / '+ds.length;
+  $('#mapInfo').textContent = `${cur.name} | ${cur.shape[0]}x${cur.shape[1]}`;
+
+  const transforms = renderTransform();
+  const mode = state.viewer.mode;
+  $('#mapSingleWrap').classList.toggle('hide', mode!=='single');
+  $('#mapWipeWrap').classList.toggle('hide', mode!=='wipe');
+  $('#mapEmpty').classList.add('hide');
+  $('#comparePicks').classList.toggle('hide', mode!=='wipe');
+
+  if(mode==='single'){
+    const r = await api('/api/preview', {names:[cur.name], transforms});
+    const data = r[cur.name].transformed || r[cur.name].raw;
+    $('#mapSingleLabel').innerHTML = `${cur.name}<span class="tag">${transforms.join('+')||'raw'}</span>`;
+    const frame = $('#mapSingleFrame');
+    const dims = dimsFor(data.length, data[0].length, frame);
+    const layout = {
+      width:dims.w, height:dims.h,
+      margin:{l:10,r:10,t:10,b:10}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+      font:{color:T().text,family:'Inter'}, showlegend:false,
+      xaxis:{showgrid:false, visible:false},
+      yaxis:{showgrid:false, visible:false},
+    };
+    Plotly.react('mapSingle', [{type:'heatmap', z:data, colorscale:T().colorscaleBg,
+      hovertemplate:`row:%{y} col:%{x}<br>val:%{z:.3f}<extra></extra>`}], layout, {displayModeBar:false});
+  } else {
+    // wipe compare
+    const r = await api('/api/preview', {names:[state.viewer.pickA, state.viewer.pickB], transforms});
+    const dataA = r[state.viewer.pickA].transformed || r[state.viewer.pickA].raw;
+    const dataB = r[state.viewer.pickB].transformed || r[state.viewer.pickB].raw;
+    $('#mapWipeLabel').innerHTML = `<b style="color:var(--accent)">${state.viewer.pickA}</b> vs <b style="color:var(--warn)">${state.viewer.pickB}</b>`;
+    const dims = dimsFor(dataA.length, dataA[0].length, $('#mapWipeStage'));
+    const layout = {
+      width:dims.w, height:dims.h,
+      margin:{l:10,r:10,t:10,b:10}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+      font:{color:T().text,family:'Inter'}, showlegend:false,
+      xaxis:{showgrid:false, visible:false},
+      yaxis:{showgrid:false, visible:false},
+    };
+    Plotly.react('mapWipeA', [{type:'heatmap', z:dataA, colorscale:'Viridis',
+      hovertemplate:`${state.viewer.pickA}<br>val:%{z:.3f}<extra></extra>`}], layout, {displayModeBar:false});
+    Plotly.react('mapWipeB', [{type:'heatmap', z:dataB, colorscale:'Turbo',
+      hovertemplate:`${state.viewer.pickB}<br>val:%{z:.3f}<extra></extra>`}], layout, {displayModeBar:false});
+    updateWipe(state.viewer.wipe);
+  }
+}
+
+// The map is always drawn inside a SQUARE frame.  The heatmap fills the
+// square automatically (Plotly's default auto-aspect), so the overall
+// figure is a clean square regardless of the data's row/column count.
+function dimsFor(nRows, nCols, frame){
+  const stage = $('#mapStage');
+  const avail = Math.max(200, Math.min(stage.clientWidth, stage.clientHeight) - 28);
+  frame.style.width = avail+'px';
+  frame.style.height = avail+'px';
+  return {w:Math.round(avail), h:Math.round(avail)};
+}
+
+function renderLabel(transforms){
+  const r = state.viewer.render;
+  if(r!=='raw') return r + (transforms.length?' + '+transforms.join('+'):'');
+  return transforms.length?transforms.join('+'):'raw';
+}
+
+function updateWipe(x){
+  state.viewer.wipe = x;
+  const stage = $('#mapWipeStage');
+  const a = $('#mapWipeA'), b = $('#mapWipeB');
+  // size B exactly over A
+  b.style.width = a.clientWidth+'px';
+  b.style.height = a.clientHeight+'px';
+  const px = x*a.clientWidth;
+  // clip B so its LEFT part is hidden up to the divider -> right side shows B
+  b.style.clipPath = `inset(0 0 0 ${px}px)`;
+  const line = $('#mapWipeLine');
+  line.style.left = px+'px';
+  line.style.height = a.clientHeight+'px';
+}
+
+// drag handling on the wipe stage
+function bindWipeDrag(){
+  const stage = $('#mapWipeStage');
+  let dragging=false;
+  stage.addEventListener('mousedown', e=>{ dragging=true; onDrag(e); });
+  window.addEventListener('mousemove', e=>{ if(dragging) onDrag(e); });
+  window.addEventListener('mouseup', ()=>{ dragging=false; });
+  function onDrag(e){
+    const rect = stage.getBoundingClientRect();
+    if(rect.width===0) return;
+    const x = Math.min(Math.max((e.clientX-rect.left)/rect.width, 0), 1);
+    updateWipe(x);
+  }
+}
+
+// ---- Tab refresh dispatcher ----
+function refreshTab(tab){
+  const names = selectedNames();
+  if(!names.length && tab!=='viewer'){ toast('Select datasets first','err'); return; }
+  ({viewer:refreshMap, distance:runDistance, overlay:runOverlay,
+    stats:runStats, compare:runCompare, quality:runQuality, adaptive:runAdaptive})[tab]();
+}
+
+// ---- Distance ----
+async function runDistance(){
+  const names = selectedNames();
+  const r = await api('/api/distance', {metric:state.metric, names, transforms:state.transforms});
+  $('#distMetric').textContent = state.metric;
+  Plotly.react('distPlot', [{
+    type:'heatmap', z:r.matrix, x:r.labels, y:r.labels,
+    colorscale:'Inferno', text:r.matrix.map(row=>row.map(v=>v.toFixed(3))),
+    texttemplate:'%{text}', textfont:{size:10},
+    hovertemplate:'%{x} vs %{y}<br>%{z:.4f}<extra></extra>'
+  }], {
+    margin:{l:90,r:20,t:30,b:90}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+    font:{color:T().text,family:'Inter'}, annotations:[]
+  }, {responsive:true});
+
+  const all = await api('/api/distance/all', {names, transforms:state.transforms});
+  const container = $('#distAllPlots'); container.innerHTML='';
+  const labels = all.labels;
+  Object.keys(all.matrices).forEach((m,i)=>{
+    const div = document.createElement('div');
+    div.style.minHeight='280px'; div.id='dm_'+i; container.appendChild(div);
+    const mat = all.matrices[m];
+    if(Array.isArray(mat) && mat.length){
+      Plotly.newPlot('dm_'+i, [{
+        type:'heatmap', z:mat, x:labels, y:labels, colorscale:'Inferno', showscale:false,
+        hovertemplate:`${m}<br>%{x}vs%{y}: %{z:.3f}<extra></extra>`
+      }], {
+        margin:{l:70,r:10,t:35,b:70}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+        font:{color:T().muted,size:10,family:'Inter'}, title:{text:m,font:{size:11}}
+      }, {displayModeBar:false,responsive:true});
+    }
+  });
+}
+
+// ---- Overlay ----
+async function runOverlay(){
+  const names = selectedNames();
+  const r = await api('/api/overlay', {names, transforms:state.transforms, mode:state.overlay});
+  const img = r.image; const sh = r.shape || [img.length, (img[0]||[]).length];
+  const nRows = sh[0], nCols = sh[1];
+  const layoutBase = {
+    margin:{l:40,r:20,t:50,b:40}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+    font:{color:T().text,family:'Inter'},
+    xaxis:{showgrid:false},
+    yaxis:{showgrid:false},
+  };
+  if(state.overlay==='rgb'){
+    Plotly.react('overlayPlot', [{
+      type:'image', z:img, colormodel:'rgba256'
+    }], {...layoutBase,
+      title:{text:`<b>RGB Composite</b> | ${r.channels.join(' = R, G, B')}`,font:{size:13}}
+    }, {responsive:true});
+    return;
+  }
+  const colorscale = state.overlay==='difference'?'RdBu':(state.overlay==='ratio'?'Turbo':'Hot');
+  Plotly.react('overlayPlot', [{
+    type:'heatmap', z:img, colorscale, hovertemplate:`row:%{y} col:%{x}<br>val:%{z:.3f}<extra></extra>`
+  }], {...layoutBase,
+    title:{text:`<b>Overlay | ${state.overlay}</b> | ${r.channels.join(', ')}`,font:{size:13}}
+  }, {responsive:true});
+}
+
+// ---- Statistics ----
+async function runStats(){
+  const names = selectedNames();
+  const r = await api('/api/statistics', {names, transforms:state.transforms});
+  if(r.pca && !r.pca.error){
+    const c=r.pca.coords, ev=r.pca.explained_variance;
+    Plotly.react('pcaPlot', [{
+      type:'scatter', mode:'markers+text', x:c.map(p=>p[0]), y:c.map(p=>p[1]||0),
+      text:r.pca.names, textposition:'top center', marker:{size:14,color:T().accent,line:{width:1,color:'#fff'}},
+      hovertemplate:'%{text}<br>PC1:%{x:.2f} PC2:%{y:.2f}<extra></extra>'
+    }], {
+      margin:{l:50,r:20,t:30,b:50}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:T().plotBg,
+      font:{color:T().text}, xaxis:{title:`PC1 (${(ev[0]*100).toFixed(1)}%)`,gridcolor:T().grid},
+      yaxis:{title:`PC2 (${(ev[1]?ev[1]*100:0).toFixed(1)}%)`,gridcolor:T().grid}
+    }, {responsive:true});
+  }
+  if(r.pearson && !r.pearson.error){
+    const m=r.pearson.matrix, lbl=r.pearson.labels;
+    Plotly.react('corrPlot', [{
+      type:'heatmap', z:m, x:lbl, y:lbl, zmin:-1, zmax:1, colorscale:'RdBu',
+      text:m.map(row=>row.map(v=>v.toFixed(2))), texttemplate:'%{text}', textfont:{size:9},
+      hovertemplate:'%{x}vs%{y}: %{z:.3f}<extra></extra>'
+    }], {margin:{l:80,r:20,t:10,b:80}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{color:T().text}}
+    , {responsive:true});
+  }
+  if(r.descriptive && !r.descriptive.error){
+    const d=r.descriptive, names2=Object.keys(d);
+    let html = '<table><thead><tr><th>Dataset</th><th>count</th><th>mean</th><th>std</th><th>min</th><th>Q25</th><th>median</th><th>Q75</th><th>max</th><th>skew</th><th>kurt</th></tr></thead><tbody>';
+    names2.forEach(n=>{ const v=d[n];
+      html += `<tr><td><b>${n}</b></td><td>${v.count}</td><td>${v.mean.toFixed(3)}</td><td>${v.std.toFixed(3)}</td>
+        <td>${v.min.toFixed(3)}</td><td>${v.q25.toFixed(3)}</td><td>${v.q50.toFixed(3)}</td>
+        <td>${v.q75.toFixed(3)}</td><td>${v.max.toFixed(3)}</td><td>${v.skewness.toFixed(3)}</td><td>${v.kurtosis.toFixed(3)}</td></tr>`;
+    });
+    html+='</tbody></table>'; $('#statsTable').innerHTML=html;
+  }
+  if(r.anova && !r.anova.error){
+    const a=r.anova;
+    $('#anovaTable').innerHTML = `<table>
+      <tr><th>Test</th><th>Statistic</th><th>p-value</th><th>Significance</th></tr>
+      <tr><td>One-way ANOVA</td><td>${a.anova_f_statistic.toFixed(4)}</td><td>${a.anova_p_value.toExponential(3)}</td>
+        <td><span class="pill ${a.anova_p_value<0.05?'ok':'warn'}">${a.anova_p_value<0.05?'p<0.05 OK':'p≥0.05'}</span></td></tr>
+      <tr><td>Kruskal-Wallis</td><td>${a.kruskal_h_statistic.toFixed(4)}</td><td>${a.kruskal_p_value.toExponential(3)}</td>
+        <td><span class="pill ${a.kruskal_p_value<0.05?'ok':'warn'}">${a.kruskal_p_value<0.05?'p<0.05 OK':'p≥0.05'}</span></td></tr>
+    </table>`;
+  }
+}
+
+// ---- Comparison ----
+async function runCompare(){
+  const names = selectedNames();
+  const r = await api('/api/comparison', {names, transforms:state.transforms});
+  const baseLayout = {margin:{l:50,r:20,t:30,b:50}, paper_bgcolor:'rgba(0,0,0,0)',
+    plot_bgcolor:T().plotBg, font:{color:T().text}, xaxis:{gridcolor:T().grid}, yaxis:{gridcolor:T().grid}};
+  if(r.pca){
+    Plotly.react('cmpPca', [{
+      type:'scatter', mode:'markers+text', x:r.pca.embedding.map(p=>p[0]),
+      y:r.pca.embedding.map(p=>p[1]||0), text:names, textposition:'top center',
+      marker:{size:16,color:T().accent,line:{width:1,color:'#fff'}}
+    }], {...baseLayout, xaxis:{...baseLayout.xaxis,title:`PC1 ${(r.pca.explained_variance[0]*100).toFixed(1)}%`},
+      yaxis:{...baseLayout.yaxis,title:`PC2 ${r.pca.explained_variance[1]?(r.pca.explained_variance[1]*100).toFixed(1):0}%`}}
+    , {responsive:true});
+  }
+  if(r.tsne && !r.tsne.error){
+    Plotly.react('cmpTsne', [{
+      type:'scatter', mode:'markers+text', x:r.tsne.embedding.map(p=>p[0]),
+      y:r.tsne.embedding.map(p=>p[1]||0), text:names, textposition:'top center',
+      marker:{size:16,color:'#ed7d31',line:{width:1,color:'#fff'}}
+    }], {...baseLayout, title:{text:`KL=${r.tsne.kl_divergence.toFixed(3)}`,font:{size:11,color:T().muted}}
+    }, {responsive:true});
+  } else { $('#cmpTsne').innerHTML='<div class="empty"><p>t-SNE needs ≥2 samples</p></div>'; }
+  if(r.umap && !r.umap.error){
+    Plotly.react('cmpUmap', [{
+      type:'scatter', mode:'markers+text', x:r.umap.embedding.map(p=>p[0]),
+      y:r.umap.embedding.map(p=>p[1]||0), text:names, textposition:'top center',
+      marker:{size:16,color:'#3ddc84',line:{width:1,color:'#fff'}}
+    }], baseLayout, {responsive:true});
+  } else { $('#cmpUmap').innerHTML='<div class="empty"><p>UMAP needs ≥2 samples (install umap-learn)</p></div>'; }
+  if(r.dendrogram){
+    const traces = r.dendrogram.x.map((yc,i)=>({
+      type:'scatter', mode:'lines', x:r.dendrogram.y[i], y:yc,
+      line:{color:T().accent,width:1.5}, showlegend:false, hoverinfo:'skip'
+    }));
+    Plotly.react('cmpDendro', traces, {
+      margin:{l:40,r:20,t:30,b:80}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+      font:{color:T().text}, xaxis:{showgrid:false,ticktext:names,tickvals:r.dendrogram.leaves.map((_,i)=>5+(i*10),0),tickangle:45},
+      yaxis:{title:'Distance',gridcolor:T().grid}
+    }, {responsive:true});
+  } else { $('#cmpDendro').innerHTML='<div class="empty"><p>Need ≥2 samples</p></div>'; }
+  if(r.kmeans){
+    const cols = [T().accent,'#ed7d31','#3ddc84','#ffb547','#ff6b6b','#7c5cff'];
+    const pca = r.pca.embedding;
+    const traces = [...new Set(r.kmeans.labels)].map(k=>({
+      type:'scatter', mode:'markers+text',
+      x:pca.filter((_,i)=>r.kmeans.labels[i]===k).map(p=>p[0]),
+      y:pca.filter((_,i)=>r.kmeans.labels[i]===k).map(p=>p[1]||0),
+      text:names.filter((_,i)=>r.kmeans.labels[i]===k), textposition:'top center',
+      name:`Cluster ${k+1}`, marker:{size:16,color:cols[k%cols.length],line:{width:1,color:'#fff'}}
+    }));
+    Plotly.react('cmpKmeans', traces, {...baseLayout,
+      title:{text:`K-Means (k=${r.kmeans.n_clusters}) | inertia=${r.kmeans.inertia.toFixed(2)}`,font:{size:11,color:T().muted}}
+    }, {responsive:true});
+  }
+}
+
+// ---- Image Quality ----
+async function runQuality(){
+  const names = selectedNames();
+  const r = await api('/api/metrics', {names});
+  const tnames = Object.keys(r);
+  const metrics = ['psnr','entropy','cei','tenengrad','ssim'];
+  const titles = {psnr:'PSNR (+)',entropy:'Entropy (+)',cei:'CEI (>1+)',tenengrad:'Tenengrad (+)',ssim:'SSIM (~1)'};
+  const colors = ['#4472C4','#ED7D31','#A5A5A5','#FFC000','#5B9BD5'];
+  const traces = [];
+  metrics.forEach((m,mi)=>{
+    traces.push({
+      type:'bar', x:tnames, y:tnames.map(t=>r[t][m]), name:titles[m],
+      marker:{color:colors[mi]}, yaxis:'y'+(mi+1), offsetgroup:mi
+    });
+  });
+  Plotly.react('qualityPlot', traces, {
+    margin:{l:50,r:50,t:30,b:80}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+    font:{color:T().text}, barmode:'group', showlegend:true,
+    legend:{orientation:'h',y:-0.2}, xaxis:{tickangle:30,gridcolor:T().grid},
+    yaxis:{title:'Value',gridcolor:T().grid},
+    yaxis2:{overlaying:'y',side:'right'}
+  }, {responsive:true});
+}
+
+// ---- AODA ----
+async function runAdaptive(){
+  const names = selectedNames();
+  if(names.length<3){ toast('AODA needs ≥3 datasets','err'); return; }
+  const r = await api('/api/adaptive', {names});
+  const rows = r.rankings.slice(0,50);
+  let html = `<table><thead><tr><th>Rank</th><th>Metric</th><th>Power (Box-Cox)</th><th>DPS</th><th>Winner</th><th>Evals</th></tr></thead><tbody>`;
+  rows.forEach(r=>{
+    const w = r.winner==='golden_section' ? 'Golden-Section' : 'Secant';
+    html += `<tr><td><b>${r.rank}</b></td><td>${r.method}</td>
+      <td>${r.power.toFixed(3)}</td><td>${r.dps.toFixed(4)}</td>
+      <td><span class="pill ${r.winner==='golden_section'?'ok':'warn'}">${w}</span></td>
+      <td>${r.n_evaluations}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  $('#aodaTable').innerHTML = html;
+  const top = r.rankings.slice(0,15);
+  Plotly.react('aodaPlot', [{
+    type:'bar', orientation:'h',
+    y:top.map(r=>`${r.method} (p=${r.power.toFixed(2)}, ${r.winner==='golden_section'?'GS':'Sec'})`).reverse(),
+    x:top.map(r=>r.dps).reverse(),
+    marker:{color:top.map(r=>r.dps).reverse(),colorscale:'Viridis',showscale:false},
+    hovertemplate:'%{y}<br>DPS:%{x:.4f}<extra></extra>'
+  }], {
+    margin:{l:320,r:20,t:10,b:40}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+    font:{color:T().text,size:11}, xaxis:{title:'DPS',gridcolor:T().grid}, yaxis:{gridcolor:T().grid}
+  }, {responsive:true});
+  try{
+    const b = await api('/api/benchmark', {names});
+    let bh = '<table><thead><tr><th>Method</th><th>Type</th><th>DPS</th><th>DPS CV</th></tr></thead><tbody>';
+    b.summary.forEach(s=>{
+      bh += `<tr><td><b>${s.Method}</b></td><td>${s.Type}</td>
+        <td>${s.DPS!=null?s.DPS.toFixed(4):'-'}</td><td>${s.DPS_CV!=null?s.DPS_CV.toFixed(3):'-'}</td></tr>`;
+    });
+    bh += '</tbody></table>';
+    $('#benchTable').innerHTML = bh;
+  } catch(e){ $('#benchTable').innerHTML='<div class="empty"><p>Benchmark error: '+e.message+'</p></div>'; }
+}
+
+bindWipeDrag();
+init();
+</script>
+</body>
+</html>

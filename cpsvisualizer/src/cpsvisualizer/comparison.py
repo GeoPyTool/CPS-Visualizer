@@ -18,6 +18,8 @@ from scipy.cluster.hierarchy import dendrogram, linkage, cophenet
 from scipy.spatial.distance import pdist, squareform
 import warnings
 
+from cpsvisualizer.core import _resample_1d
+
 
 try:
     import umap as umap_module
@@ -26,11 +28,26 @@ except ImportError:
     UMAP_AVAILABLE = False
 
 
-def _prepare_feature_matrix(df_list):
-    """Convert list of DataFrames into a feature matrix (n_samples x n_features)."""
-    X = np.array([df.values.ravel() for df in df_list])
+def prepare_feature_matrix(df_list):
+    """Convert a list of DataFrames into a standardized feature matrix.
+
+    Datasets may differ in shape; each matrix is flattened and resampled
+    to the median flattened length so that PCA / t-SNE / UMAP receive a
+    rectangular (n_samples x n_features) matrix regardless of the source
+    dimensions.
+    """
+    vecs = [df.values.ravel() for df in df_list]
+    if not vecs:
+        return np.zeros((0, 1)), StandardScaler()
+    length = int(np.median([v.size for v in vecs]))
+    if length < 1:
+        length = 1
+    X = np.array([_resample_1d(v, length) for v in vecs])
     scaler = StandardScaler()
     return scaler.fit_transform(X), scaler
+
+# Backward-compatible alias
+_prepare_feature_matrix = prepare_feature_matrix
 
 
 def compute_pca_embedding(df_list, df_name_list, n_components=2):
@@ -67,7 +84,8 @@ def compute_tsne_embedding(df_list, df_name_list, n_components=2,
 
 
 def compute_umap_embedding(df_list, df_name_list, n_components=2,
-                           n_neighbors=15, min_dist=0.1, random_state=42):
+                           n_neighbors=15, min_dist=0.1, random_state=42,
+                           init='spectral'):
     """UMAP embedding for manifold learning-based comparison."""
     if len(df_list) < 2:
         return {
@@ -87,7 +105,9 @@ def compute_umap_embedding(df_list, df_name_list, n_components=2,
     X, _ = _prepare_feature_matrix(df_list)
     reducer = umap_module.UMAP(
         n_components=n_components, n_neighbors=min(n_neighbors, len(df_list) - 1),
-        min_dist=min_dist, random_state=random_state
+        min_dist=min_dist, random_state=random_state,
+        init=init,
+        n_epochs=10,   # minimal epochs for speed
     )
     embedding = reducer.fit_transform(X)
     return {

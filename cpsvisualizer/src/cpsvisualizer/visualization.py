@@ -19,12 +19,21 @@ import os
 import warnings
 from scipy.cluster.hierarchy import dendrogram
 
+from cpsvisualizer.core import display_scale, ink_colormap, FIG_BG
+
 
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
 plt.rcParams['font.size'] = 11
 plt.rcParams['svg.fonttype'] = 'none'
 plt.rcParams['pdf.fonttype'] = 'truetype'
+
+
+def _square_aspect(n_rows, n_cols):
+    """Matplotlib aspect that renders the whole plot as a square."""
+    if n_rows == 0 or n_cols == 0:
+        return 1.0
+    return float(n_cols) / float(n_rows)
 
 
 def _ensure_output_dir(custom_dir=None):
@@ -276,10 +285,13 @@ def plot_correlation_heatmap(corr_df, pval_df=None, save_path=None, figsize=(8, 
 
 
 def plot_enhanced_data_matrix(df_list, df_name_list, transforms=None,
-                              cmap='viridis', save_path=None, figsize=None):
+                              cmap=None, save_path=None, figsize=None):
     """Generate an enhanced grid visualization of data matrices.
 
-    Supports multiple colormaps and optional transform application.
+    By default each matrix is robustly scaled (log + percentile window)
+    and drawn with the grayscale ink colormap (minimum colourless,
+    deepest values dark grayscale). Any matplotlib colormap name can be
+    passed via ``cmap`` to override this.
     """
     if transforms is None:
         transforms = []
@@ -294,6 +306,7 @@ def plot_enhanced_data_matrix(df_list, df_name_list, transforms=None,
         figsize = (3 * cols, 3 * rows)
 
     fig, axes = plt.subplots(rows, cols, figsize=figsize)
+    fig.patch.set_facecolor(FIG_BG)
     if rows == 1 and cols == 1:
         axes = np.array([[axes]])
     elif rows == 1:
@@ -304,13 +317,19 @@ def plot_enhanced_data_matrix(df_list, df_name_list, transforms=None,
     for i, (name, df) in enumerate(zip(df_name_list, df_list)):
         r, c = i // cols, i % cols
         ax = axes[r, c]
+        ax.set_facecolor(FIG_BG)
         data = df.values.copy()
         for trans_func in transforms:
             try:
                 data = trans_func(data)
             except Exception:
                 pass
-        im = ax.imshow(data, aspect='auto', cmap=cmap)
+        if cmap is None:
+            s, lo, hi = display_scale(data)
+            im = ax.imshow(s, aspect=_square_aspect(*data.shape),
+                           cmap=ink_colormap(), vmin=lo, vmax=hi)
+        else:
+            im = ax.imshow(data, aspect=_square_aspect(*data.shape), cmap=cmap)
         ax.set_title(name, fontsize=9)
         ax.set_xticks([])
         ax.set_yticks([])

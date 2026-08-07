@@ -15,8 +15,9 @@ from skimage import exposure
 
 
 def log_transform(data):
-    """Apply natural log transform with log1p to handle zeros safely."""
-    return np.log1p(data)
+    """Apply natural log transform: log1p(data - min + 1) to handle negatives and zeros."""
+    offset = max(0, -data.min()) + 1
+    return np.log1p(data + offset)
 
 
 def centering_transform(data):
@@ -26,7 +27,8 @@ def centering_transform(data):
 
 def log_centering_transform(data):
     """Apply log transform followed by centering."""
-    log_data = np.log1p(data)
+    offset = max(0, -data.min()) + 1
+    log_data = np.log1p(data + offset)
     return log_data - np.mean(log_data, axis=0)
 
 
@@ -49,6 +51,86 @@ def equalize_hist(data):
     return exposure.equalize_hist(data)
 
 
+# ---------------------------------------------------------------------------
+# Spatial filters (for denoising / edge emphasis) — shared by all interfaces
+# ---------------------------------------------------------------------------
+def gaussian_filter(data, sigma=1.0):
+    """Gaussian smoothing to reduce noise."""
+    from scipy.ndimage import gaussian_filter as _gf
+    return _gf(np.nan_to_num(data.astype(float), nan=0.0), sigma=sigma)
+
+
+def median_filter(data, size=3):
+    """Median filter — edge-preserving noise reduction."""
+    from scipy.ndimage import median_filter as _mf
+    return _mf(np.nan_to_num(data.astype(float), nan=0.0), size=size)
+
+
+def sobel_gradient(data):
+    """Sobel gradient magnitude — emphasises sharp boundaries."""
+    from scipy.ndimage import sobel
+    d = np.nan_to_num(data.astype(float), nan=0.0)
+    gx = sobel(d, axis=0)
+    gy = sobel(d, axis=1)
+    return np.hypot(gx, gy)
+
+
+def unsharp_mask(data, radius=2.0, amount=1.0):
+    """Unsharp masking — boosts local contrast / detail."""
+    from skimage.filters import unsharp_mask as _um
+    d = np.nan_to_num(data.astype(float), nan=0.0)
+    return _um(d, radius=radius, amount=amount)
+
+
+def normalize_01(data):
+    """Min-max normalise to [0, 1]."""
+    d = np.asarray(data, dtype=float)
+    mn, mx = np.nanmin(d), np.nanmax(d)
+    if mx - mn < 1e-12:
+        return np.zeros_like(d)
+    return (d - mn) / (mx - mn)
+
+
+def clip_percentile(data, low=1.0, high=99.0):
+    """Clip extreme values to the [low, high] percentile range (contrast stretch)."""
+    d = np.asarray(data, dtype=float)
+    lo, hi = np.percentile(d, [low, high])
+    return np.clip(d, lo, hi)
+
+
+FIG_BG = '#F5F7FA'
+
+
+def ink_colormap(opaque_min=False, name='cps_ink'):
+    """Grayscale ink colormap: the minimum value is colourless (transparent)
+    and only the deepest values render as dark grayscale. With
+    ``opaque_min=True`` the ramp starts at opaque white instead (used for
+    overlay layers that must hide what is beneath them)."""
+    from matplotlib.colors import LinearSegmentedColormap
+    low = (1.0, 1.0, 1.0, 1.0) if opaque_min else (0.0, 0.0, 0.0, 0.0)
+    cmap = LinearSegmentedColormap.from_list(
+        name, [low, (0.0, 0.0, 0.0, 1.0)], N=256)
+    cmap.set_under((0.0, 0.0, 0.0, 0.0))
+    return cmap
+
+
+def display_scale(data, low=1.0, high=99.0):
+    """Robust display scaling: shift to non-negative, log1p-compress and
+    window to the [low, high] percentile so outliers cannot dominate the
+    colour mapping. Returns ``(scaled, vmin, vmax)``."""
+    d = np.nan_to_num(np.asarray(data, dtype=float),
+                      nan=0.0, posinf=0.0, neginf=0.0)
+    if d.size == 0:
+        return d, 0.0, 1.0
+    s = np.log1p(d - d.min())
+    lo, hi = np.percentile(s, [low, high])
+    if hi - lo < 1e-12:
+        lo, hi = float(s.min()), float(s.max())
+    if hi - lo < 1e-12:
+        lo, hi = 0.0, 1.0
+    return s, lo, hi
+
+
 TRANSFORM_FUNCTIONS = {
     'log_transform': log_transform,
     'centering_transform': centering_transform,
@@ -56,6 +138,12 @@ TRANSFORM_FUNCTIONS = {
     'z_score_normalization': z_score_normalization,
     'standardize': standardize,
     'equalize_hist': equalize_hist,
+    'gaussian_filter': gaussian_filter,
+    'median_filter': median_filter,
+    'sobel_gradient': sobel_gradient,
+    'unsharp_mask': unsharp_mask,
+    'normalize_01': normalize_01,
+    'clip_percentile': clip_percentile,
 }
 
 
@@ -213,7 +301,7 @@ def mutual_info_score_unflattern(df_A, df_B):
     labels_true = df_A.values if isinstance(df_A, pd.DataFrame) else df_A
     labels_pred = df_B.values if isinstance(df_B, pd.DataFrame) else df_B
     n_features = labels_true.shape[1]
-    mi_scores = Parallel(n_jobs=-1)(
+    mi_scores = Parallel(n_jobs=1, backend='threading')(
         delayed(mutual_info_score)(labels_true[:, i], labels_pred[:, i])
         for i in range(n_features)
     )
@@ -248,7 +336,7 @@ def mutual_info_regression_unflattern(df_A, df_B):
     data_B = df_B.values
     min_columns = min(data_A.shape[1], data_B.shape[1])
     data_A_rep, data_B_rep = _pad_to_match(data_A, data_B)
-    mi_list = Parallel(n_jobs=-1)(
+    mi_list = Parallel(n_jobs=1, backend='threading')(
         delayed(mutual_info_regression)(
             data_A_rep[:, i].reshape(-1, 1), data_B_rep[:, i]
         )
@@ -352,8 +440,27 @@ DISTANCE_FUNCTIONS = [
 DISTANCE_NAMES = [f.__name__ for f in DISTANCE_FUNCTIONS]
 
 
+def _resample_1d(vec, length):
+    """Resample a 1-D vector to ``length`` evenly-spaced samples (linear)."""
+    vec = np.asarray(vec, dtype=float).ravel()
+    vec = vec[np.isfinite(vec)]
+    if vec.size == 0:
+        return np.zeros(length, dtype=float)
+    if vec.size == 1:
+        return np.full(length, float(vec[0]))
+    if length <= 1:
+        return np.array([float(vec.mean())])
+    src = np.linspace(0.0, 1.0, num=vec.size)
+    dst = np.linspace(0.0, 1.0, num=length)
+    return np.interp(dst, src, vec)
+
+
 def compute_pairwise_matrix(df_list, df_name_list, func):
     """Compute an n x n symmetric pairwise distance/similarity matrix.
+
+    Datasets may differ in shape; each matrix is flattened and resampled
+    to the median flattened length before the metric is applied, so the
+    matrix is well-defined across heterogeneous inputs.
 
     Args:
         df_list: list of pandas DataFrames
@@ -364,18 +471,19 @@ def compute_pairwise_matrix(df_list, df_name_list, func):
         pandas DataFrame with row/column labels
     """
     n = len(df_list)
-    arrays = [df.values.ravel() for df in df_list]
+    vecs = [df.values.ravel() for df in df_list]
+    if vecs:
+        length = int(np.median([v.size for v in vecs]))
+        if length < 1:
+            length = 1
+        aligned = [pd.DataFrame(_resample_1d(v, length).reshape(-1, 1)) for v in vecs]
+    else:
+        aligned = []
     results = np.zeros((n, n))
     for i in range(n):
-        A_arr = arrays[i]
-        A_shape = df_list[i].shape
-        for j in range(i, n):
-            B_arr = arrays[j]
-            B_shape = df_list[j].shape
-            val = func(
-                pd.DataFrame(A_arr.reshape(A_shape)),
-                pd.DataFrame(B_arr.reshape(B_shape)),
-            )
+        results[i, i] = func(aligned[i], aligned[i])
+        for j in range(i + 1, n):
+            val = func(aligned[i], aligned[j])
             results[i, j] = val
             results[j, i] = val
     return pd.DataFrame(results, index=df_name_list, columns=df_name_list)
