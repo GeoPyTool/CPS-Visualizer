@@ -1,5 +1,29 @@
 # CPS-Visualizer Release Notes
 
+## 1.1.0 (7 Aug 2026)
+
+### Major Features
+* New `core.py` module — shared distance metrics, transforms, and utilities eliminating all code duplication between GUI and CLI (26 distance functions, 6 transforms)
+* New `statistics.py` module — PCA, Pearson/Spearman correlation, ANOVA, Kruskal-Wallis, descriptive statistics, uncertainty quantification
+* New `metrics.py` module — PSNR, Shannon entropy, Contrast Enhancement Index, Tenengrad sharpness, multi-scale SSIM evaluation
+* New `comparison.py` module — PCA, t-SNE, UMAP, hierarchical clustering, K-means comparison against established methods
+* New `visualization.py` module — publication-quality figure generation (PCA scatter, t-SNE/UMAP embeddings, dendrograms, correlation heatmaps, image quality charts)
+* Two new continuous distance metrics: Bray-Curtis and Canberra
+
+### Improvements
+* Complete architectural refactor — dict-based dispatch replaces 26+ thin wrapper methods in both GUI and CLI
+* Fixed critical bug: dataset `j` incorrectly reshaped to dataset `i`'s shape in pairwise loops
+* Fixed division-by-zero guards in Cosine, Correlation, and z-score normalization
+* Fixed Minkowski default parameter from p=3 to standard p=2
+* Fixed subplot layout — now uses optimal rectangular grid instead of wasteful perfect squares
+* GUI: removed unused Qt5 import from CLI, cleaned all unused imports, added docstrings and type hints
+* CLI: improved argument handling, silent skip of unrecognized transform names
+* `visual_diff` now returns Figure object instead of leaking via pyplot state machine
+* Removed ~150 lines of dead code (stale mutual_info function, bare list expressions, unused wrapper)
+
+### Testing
+* 100 comprehensive unit tests covering all modules: transforms, 28 distance metrics, pairwise computation, statistics, image quality metrics, comparison methods, visualization output, CLI workflow, and edge cases (zero data, constant data, shape mismatches, NaN propagation)
+
 ## 0.0.1 (10 Jul 2024)
 
 * Initial release
