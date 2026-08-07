@@ -500,7 +500,7 @@ class CPSVisualizer(QMainWindow):
     def _build_distance_tab(self):
         tab = QWidget()
         v = QVBoxLayout()
-        self._dist_canvas = FigureCanvas(Figure(figsize=(9, 6), dpi=self.dpi))
+        self._dist_canvas = FigureCanvas(Figure(figsize=(12, 6), dpi=self.dpi))
         self._table = CustomQTableView()
         v.addWidget(self._dist_canvas, 3)
         v.addWidget(self._table, 2)
@@ -706,8 +706,9 @@ class CPSVisualizer(QMainWindow):
                  'Hsim_Distance', 'Bray_Curtis', 'Canberra']
 
     def _plot_distance_grid(self):
-        """Render the six representative distance metrics as a 2x3 grid of
-        0-1 normalized heatmaps on the Distance tab."""
+        """Render the six representative distance metrics as a 2x4 grid of
+        0-1 normalized heatmaps on the Distance tab.  The eighth cell holds
+        a shared colorbar so the six heatmaps keep an even layout."""
         fig = self._dist_canvas.figure
         fig.clear()
         fig.patch.set_facecolor(FIG_BG)
@@ -721,9 +722,13 @@ class CPSVisualizer(QMainWindow):
         names = self.df_name_list
         n = len(names)
         metrics = [m for m in self.DIST_GRID if m in self._dist_funcs]
-        nrows, ncols = 2, 3
+        nrows, ncols = 2, 4
+        # use a GridSpec: 6 heatmap cells + 1 dedicated colorbar cell
+        from matplotlib.gridspec import GridSpec
+        gs = GridSpec(nrows, ncols, figure=fig,
+                      width_ratios=[1, 1, 1, 1], wspace=0.35, hspace=0.35)
         images = []
-        for pos, mname in enumerate(metrics, 1):
+        for pos, mname in enumerate(metrics):
             if mname not in self.result_df_dict:
                 self.result_df_dict[mname] = compute_pairwise_matrix(
                     self.df_list, names, self._dist_funcs[mname])
@@ -735,7 +740,8 @@ class CPSVisualizer(QMainWindow):
                 if hi - lo > 1e-12:
                     vals = (vals - lo) / (hi - lo)
                     np.fill_diagonal(vals, 0.0)
-            ax = fig.add_subplot(nrows, ncols, pos)
+            row, col = pos // 3, pos % 3
+            ax = fig.add_subplot(gs[row, col])
             ax.set_facecolor(FIG_BG)
             im = ax.imshow(vals, cmap=ink_colormap(), vmin=0.0, vmax=1.0,
                            aspect='equal')
@@ -743,8 +749,6 @@ class CPSVisualizer(QMainWindow):
             ax.set_title(mname, fontsize=10)
             ax.set_xticks(range(n))
             ax.set_yticks(range(n))
-            col = (pos - 1) % ncols
-            row = (pos - 1) // ncols
             if row == nrows - 1:
                 ax.set_xticklabels(names, rotation=45, ha='right', fontsize=8)
             else:
@@ -753,11 +757,18 @@ class CPSVisualizer(QMainWindow):
                 ax.set_yticklabels(names, fontsize=8)
             else:
                 ax.set_yticklabels([])
-        # single shared colorbar on the right
+        # dedicated colorbar in the last column, spanning both rows
+        cax = fig.add_subplot(gs[:, 3])
+        cax.set_facecolor(FIG_BG)
         if images:
-            cbar = fig.colorbar(images[-1], ax=fig.get_axes(),
-                                shrink=0.8, fraction=0.04, pad=0.02)
+            import matplotlib as _mpl
+            norm = _mpl.colors.Normalize(vmin=0.0, vmax=1.0)
+            sm = _mpl.cm.ScalarMappable(cmap=ink_colormap(), norm=norm)
+            sm.set_array([])
+            cbar = fig.colorbar(sm, cax=cax, shrink=0.9)
             cbar.set_label('normalized distance (0-1)')
+        else:
+            cax.axis('off')
         fig.tight_layout()
         self._dist_canvas.draw()
 

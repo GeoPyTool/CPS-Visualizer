@@ -1,4 +1,11 @@
 # CPS-Visualizer Release Notes
+## 1.2.3 (8 Aug 2026)
+
+### Improvements
+* Distance panel layout: 2x4 grid (6 heatmaps + dedicated colorbar cell)
+  with even spacing — heatmaps no longer pushed to the right side
+* Wider canvas (12x6) to accommodate the 2x4 layout
+
 ## 1.2.2 (8 Aug 2026)
 
 ### Fixes
