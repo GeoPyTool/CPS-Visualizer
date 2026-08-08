@@ -683,20 +683,17 @@ class CPSVisualizer(QMainWindow):
         parent.addTab(sc, 'Figures')
 
     def _build_fusion_pane(self, parent):
-        """Visual-Numerical Fusion tab — coordinate-wise blend of visual
-        and statistical enhancement channels."""
+        """Visual-Numerical Fusion — three-panel display:
+        (1) visual enhancement, (2) structural contour extraction,
+        (3) fused overlay."""
         sc, inner = self._scroll_pane()
         v = QVBoxLayout(inner)
 
         bar = QHBoxLayout()
-        bar.addWidget(QLabel('A (visual):'))
-        self._fus_pick_a = QComboBox()
-        self._fus_pick_a.currentTextChanged.connect(self._on_fusion_change)
-        bar.addWidget(self._fus_pick_a)
-        bar.addWidget(QLabel('B (stat):'))
-        self._fus_pick_b = QComboBox()
-        self._fus_pick_b.currentTextChanged.connect(self._on_fusion_change)
-        bar.addWidget(self._fus_pick_b)
+        bar.addWidget(QLabel('Element:'))
+        self._fus_pick = QComboBox()
+        self._fus_pick.currentTextChanged.connect(self._on_fusion_change)
+        bar.addWidget(self._fus_pick)
         bar.addWidget(QLabel('Stat:'))
         self._fus_stat = QComboBox()
         from cpsvisualizer.fusion import STAT_ENHANCE_NAMES
@@ -704,45 +701,29 @@ class CPSVisualizer(QMainWindow):
         self._fus_stat.setCurrentText('robust_zscore')
         self._fus_stat.currentTextChanged.connect(self._on_fusion_change)
         bar.addWidget(self._fus_stat)
-        v.addLayout(bar)
-
-        bar2 = QHBoxLayout()
-        bar2.addWidget(QLabel('Fusion:'))
+        bar.addWidget(QLabel('Fusion:'))
         self._fus_mode = QComboBox()
         self._fus_mode.addItems(['add', 'multiply', 'exp'])
         self._fus_mode.currentTextChanged.connect(self._on_fusion_change)
-        bar2.addWidget(self._fus_mode)
-        bar2.addWidget(QLabel('Display:'))
-        self._fus_display = QComboBox()
-        self._fus_display.addItems(['wipe', 'overlay', 'side-by-side'])
-        self._fus_display.currentTextChanged.connect(self._on_fusion_change)
-        bar2.addWidget(self._fus_display)
-        bar2.addWidget(QLabel('Alpha:'))
+        bar.addWidget(self._fus_mode)
+        bar.addWidget(QLabel('Alpha:'))
         self._fus_alpha = QSlider(Qt.Horizontal)
         self._fus_alpha.setRange(0, 100)
         self._fus_alpha.setValue(50)
         self._fus_alpha.valueChanged.connect(self._on_fusion_change)
-        bar2.addWidget(self._fus_alpha)
+        bar.addWidget(self._fus_alpha)
         self._fus_alpha_label = QLabel('0.50')
         self._fus_alpha.valueChanged.connect(
             lambda v: self._fus_alpha_label.setText(f'{v/100:.2f}'))
-        bar2.addWidget(self._fus_alpha_label)
-        bar2.addStretch(1)
-        v.addLayout(bar2)
+        bar.addWidget(self._fus_alpha_label)
+        bar.addStretch(1)
+        v.addLayout(bar)
 
-        # canvas
-        self._fus_canvas = FigureCanvas(Figure(figsize=(10, 8), dpi=self.dpi))
+        self._fus_canvas = FigureCanvas(Figure(figsize=(16, 6), dpi=self.dpi))
         _install_figure_export(self._fus_canvas, 'cps_fusion')
         self._fus_canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self._fus_canvas.setMinimumHeight(500)
+        self._fus_canvas.setMinimumHeight(400)
         v.addWidget(self._fus_canvas)
-
-        # wipe slider
-        self._fus_slider = QSlider(Qt.Horizontal)
-        self._fus_slider.setRange(0, 100)
-        self._fus_slider.setValue(50)
-        self._fus_slider.valueChanged.connect(self._render_fusion_display)
-        v.addWidget(self._fus_slider)
 
         parent.addTab(sc, 'Fusion')
 
@@ -752,113 +733,71 @@ class CPSVisualizer(QMainWindow):
             self._render_fusion()
 
     def _fill_fusion_picks(self):
-        cur_a = self._fus_pick_a.currentText()
-        cur_b = self._fus_pick_b.currentText()
-        self._fus_pick_a.blockSignals(True)
-        self._fus_pick_b.blockSignals(True)
-        self._fus_pick_a.clear()
-        self._fus_pick_b.clear()
-        self._fus_pick_a.addItems(self.df_name_list)
-        self._fus_pick_b.addItems(self.df_name_list)
-        if cur_a in self.df_name_list:
-            self._fus_pick_a.setCurrentText(cur_a)
-        if cur_b in self.df_name_list:
-            self._fus_pick_b.setCurrentText(cur_b)
-        if len(self.df_name_list) >= 2:
-            self._fus_pick_b.setCurrentIndex(1)
-        self._fus_pick_a.blockSignals(False)
-        self._fus_pick_b.blockSignals(False)
+        cur = self._fus_pick.currentText()
+        self._fus_pick.blockSignals(True)
+        self._fus_pick.clear()
+        self._fus_pick.addItems(self.df_name_list)
+        if cur in self.df_name_list:
+            self._fus_pick.setCurrentText(cur)
+        self._fus_pick.blockSignals(False)
 
     def _render_fusion(self):
-        """Compute visual + statistical channels and the fused result, then
-        display according to the selected display mode."""
         from cpsvisualizer.fusion import STAT_ENHANCE, FUSION_FUNCTIONS
-        a = self._fus_pick_a.currentText()
-        b = self._fus_pick_b.currentText()
-        if not a or not b or a not in self.df_name_list or b not in self.df_name_list:
-            return
-        ai = self.df_name_list.index(a)
-        bi = self.df_name_list.index(b)
-        data_a = self.df_list[ai].to_numpy().copy()
-        data_b = self.df_list[bi].to_numpy().copy()
-
-        # Channel A: visual (log + equalize)
         from cpsvisualizer.core import log_transform, equalize_hist
-        V = equalize_hist(log_transform(data_a))
+        name = self._fus_pick.currentText()
+        if not name or name not in self.df_name_list:
+            return
+        idx = self.df_name_list.index(name)
+        data = self.df_list[idx].to_numpy().copy()
+
+        # Panel 1: visual enhancement (log + equalize)
+        V = equalize_hist(log_transform(data))
         V = (V - V.min()) / (V.max() - V.min() + 1e-10)
 
-        # Channel B: statistical
-        stat_name = self._fus_stat.currentText()
-        S = STAT_ENHANCE[stat_name](data_b.astype(np.float64))
-        S = (S - S.min()) / (S.max() - S.min() + 1e-10)
+        # Panel 2: structural contour extraction (sobel gradient magnitudes
+        #          as line traces)
+        from scipy.ndimage import sobel, gaussian_filter
+        d = np.nan_to_num(data.astype(float), nan=0.0, posinf=0.0, neginf=0.0)
+        d_sm = gaussian_filter(d, sigma=1.0)
+        gx = sobel(d_sm, axis=0); gy = sobel(d_sm, axis=1)
+        E = np.hypot(gx, gy)
+        E = (E - E.min()) / (E.max() - E.min() + 1e-10)
 
-        # Fused
+        # Panel 3: fused overlay (visual + statistical weighted)
+        stat_name = self._fus_stat.currentText()
+        S = STAT_ENHANCE[stat_name](data.astype(np.float64))
+        S = (S - S.min()) / (S.max() - S.min() + 1e-10)
         fmode = self._fus_mode.currentText()
         alpha = self._fus_alpha.value() / 100.0
         F = FUSION_FUNCTIONS[fmode](V, S, alpha)
         F = (F - F.min()) / (F.max() - F.min() + 1e-10)
 
-        min_r = min(V.shape[0], F.shape[0])
-        min_c = min(V.shape[1], F.shape[1])
-        self._fus_V = V[:min_r, :min_c]
-        self._fus_S = S[:min_r, :min_c]
-        self._fus_F = F[:min_r, :min_c]
-        self._fus_a_name = a
-        self._fus_b_name = b
+        self._fus_V = V; self._fus_E = E; self._fus_F = F
+        self._fus_name = name
         self._render_fusion_display()
 
     def _render_fusion_display(self, _=None):
         if not hasattr(self, '_fus_V') or self._fus_V is None:
             return
         fig = self._fus_canvas.figure
-        fig.clear()
-        fig.patch.set_facecolor(FIG_BG)
-        ax = fig.add_subplot(111)
-        ax.set_facecolor(FIG_BG)
-        mode = self._fus_display.currentText()
-        pos = self._fus_slider.value() / 100.0
+        fig.clear(); fig.patch.set_facecolor(FIG_BG)
+        from matplotlib.gridspec import GridSpec
+        gs = GridSpec(1, 3, figure=fig, wspace=0.15,
+                      left=0.04, right=0.98, top=0.92, bottom=0.08)
 
-        if mode == 'wipe':
-            # B (statistical) underneath, A (visual) clipped on left
-            sb, lb, hb = display_scale(self._fus_S, 0, 100)
-            ax.imshow(sb, cmap=ink_colormap(), vmin=lb, vmax=hb,
-                      aspect='auto', interpolation='nearest')
-            sa, la, ha = display_scale(self._fus_V, 0, 100)
-            im_a = ax.imshow(sa, cmap=ink_colormap(opaque_min=True),
-                             vmin=la, vmax=ha,
-                             aspect='auto', interpolation='nearest')
-            xlim = ax.get_xlim()
-            clip_x = xlim[0] + (xlim[1] - xlim[0]) * pos
-            from matplotlib.patches import Rectangle
-            rect = Rectangle((xlim[0] - 1, -5),
-                             clip_x - (xlim[0] - 1), 10 * self._fus_V.shape[0],
-                             transform=ax.transData, facecolor='none')
-            im_a.set_clip_path(rect)
-            ax.set_title(f'Wipe: {self._fus_a_name} (visual) | '
-                         f'{self._fus_b_name} (stat)')
-
-        elif mode == 'overlay':
-            # fused result only
-            sf, lf, hf = display_scale(self._fus_F, 0, 100)
-            ax.imshow(sf, cmap=ink_colormap(), vmin=lf, vmax=hf,
-                      aspect='auto', interpolation='nearest')
-            ax.set_title(f'Fusion: {self._fus_a_name}+{self._fus_b_name} '
-                         f'[{self._fus_mode.currentText()} '
-                         f'\u03b1={self._fus_alpha.value()/100:.2f}]')
-
-        else:  # side-by-side
-            # left half = visual, right half = statistical
-            sa, la, ha = display_scale(self._fus_V, 0, 100)
-            ax.imshow(sa, cmap=ink_colormap(), vmin=la, vmax=ha,
-                      aspect='auto', interpolation='nearest')
-            sb, lb, hb = display_scale(self._fus_S, 0, 100)
-            ax.imshow(sb, cmap=ink_colormap(), vmin=lb, vmax=hb,
-                      aspect='auto', interpolation='nearest')
-            ax.set_title(f'Side-by-side: {self._fus_a_name} | '
-                         f'{self._fus_b_name}')
-
-        ax.set_aspect(_square_aspect(*self._fus_V.shape),
-                      adjustable='box', anchor='C')
+        titles = ['Visual Enhancement', 'Structural Contours',
+                  f'Fused [{self._fus_mode.currentText()} '
+                  f'\u03b1={self._fus_alpha.value()/100:.2f}]']
+        arrays = [self._fus_V, self._fus_E, self._fus_F]
+        for i, (title, arr) in enumerate(zip(titles, arrays)):
+            ax = fig.add_subplot(gs[0, i])
+            ax.set_facecolor(FIG_BG)
+            s, lo, hi = display_scale(arr, 0, 100)
+            ax.imshow(s, cmap=ink_colormap(), vmin=lo, vmax=hi,
+                      aspect='equal', interpolation='nearest')
+            ax.set_title(title, fontsize=10)
+            ax.set_xticks([]); ax.set_yticks([])
+        fig.suptitle(f'Fusion: {self._fus_name}', fontsize=12, y=0.97)
         self._fus_canvas.draw()
 
     # ------------------------------------------------------------------
