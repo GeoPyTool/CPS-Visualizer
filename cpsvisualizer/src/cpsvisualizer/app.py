@@ -1455,25 +1455,34 @@ class CPSVisualizer(QMainWindow):
                     m['entropy_transformed']['normalized_entropy']
                     for m in ds if 'entropy_transformed' in m
                     and 'error' not in m]) if ds else 0
-                _c = np.mean([m.get('cei', 0) for m in ds]) if ds else 0
-                # log1p-clamp extreme CEI values so one bar doesn't squash
-                # all the others
-                _c = np.log1p(np.clip(_c, 0, 100.0))
+                _c = np.log1p(np.clip(
+                    np.mean([m.get('cei', 0) for m in ds]) if ds else 0,
+                    0, 100.0))
                 psnr.append(_p)
                 ent.append(_e)
                 cei.append(_c)
+            # normalise each metric independently to [0, 1]
+            def _scale(vals):
+                vmin, vmax = min(vals), max(vals)
+                if vmax - vmin < 1e-12:
+                    return [0.5] * len(vals)
+                return [(v - vmin) / (vmax - vmin) for v in vals]
+            psnr = _scale(psnr)
+            ent = _scale(ent)
+            cei = _scale(cei)
             x = np.arange(len(tnames))
             w = 0.25
             ax.bar(x - w, psnr, w, label='PSNR', color='#4472C4',
                    edgecolor='black', linewidth=0.3)
             ax.bar(x, ent, w, label='Entropy', color='#ED7D31',
                    edgecolor='black', linewidth=0.3)
-            ax.bar(x + w, cei, w, label='CEI (log)', color='#A5A5A5',
+            ax.bar(x + w, cei, w, label='CEI (norm)', color='#A5A5A5',
                    edgecolor='black', linewidth=0.3)
             ax.set_xticks(x)
             ax.set_xticklabels(tnames, rotation=45, ha='right', fontsize=7)
+            ax.set_ylim(0, 1.05)
             ax.legend(fontsize=7)
-            ax.set_title('Image Quality Metrics', fontsize=10)
+            ax.set_title('Image Quality Metrics (normalized)', fontsize=10)
             ax.grid(axis='y', alpha=0.2, linestyle='--')
         except Exception as e:
             ax.text(0.5, 0.5, str(e), ha='center', va='center')

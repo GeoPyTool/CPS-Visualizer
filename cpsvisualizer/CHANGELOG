@@ -1,4 +1,10 @@
 # CPS-Visualizer Release Notes
+## 1.3.7 (8 Aug 2026)
+
+### Fixes
+* Image quality chart: each metric (PSNR/Entropy/CEI) independently
+  min-max normalised to [0,1] so bars are directly comparable
+
 ## 1.3.6 (8 Aug 2026)
 
 ### Fixes
