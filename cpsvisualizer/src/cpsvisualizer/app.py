@@ -748,6 +748,9 @@ class CPSVisualizer(QMainWindow):
                 if hi - lo > 1e-12:
                     vals = (vals - lo) / (hi - lo)
                     np.fill_diagonal(vals, 0.0)
+                # log-stretch so small differences spread across more
+                # of the grayscale range for finer discrimination
+                vals = np.log1p(vals * 255.0) / np.log1p(255.0)
             row, col = pos // ncols, pos % ncols
             ax = fig.add_subplot(gs[row, col])
             ax.set_facecolor(FIG_BG)
@@ -773,8 +776,11 @@ class CPSVisualizer(QMainWindow):
             sm = _mpl.cm.ScalarMappable(cmap=ink_colormap(), norm=norm)
             sm.set_array([])
             cbar = fig.colorbar(sm, cax=cax)
-            cbar.set_label('normalized distance (0-1)', fontsize=8)
             cbar.ax.tick_params(labelsize=7)
+            # put label on the left side of the bar so it is not clipped
+            cbar.ax.yaxis.set_label_position('left')
+            cbar.ax.yaxis.set_ticks_position('right')
+            cbar.set_label('normalized distance (0-1)', fontsize=8)
         else:
             cax.axis('off')
         self._dist_canvas.draw()

@@ -1,4 +1,11 @@
 # CPS-Visualizer Release Notes
+## 1.2.7 (8 Aug 2026)
+
+### Improvements
+* Distance grid: log-stretched mapping (log1p(255x)/log1p(255)) for finer
+  grayscale discrimination between distance values
+* Colorbar label moved to the left side so it is no longer clipped
+
 ## 1.2.6 (8 Aug 2026)
 
 ### Improvements
