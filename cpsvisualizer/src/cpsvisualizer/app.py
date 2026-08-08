@@ -502,8 +502,13 @@ class CPSVisualizer(QMainWindow):
         v = QVBoxLayout()
         self._dist_canvas = FigureCanvas(Figure(figsize=(12, 6), dpi=self.dpi))
         self._table = CustomQTableView()
-        v.addWidget(self._dist_canvas, 3)
-        v.addWidget(self._table, 2)
+        self._table.setMaximumHeight(160)
+        table_scroll = QScrollArea()
+        table_scroll.setWidgetResizable(True)
+        table_scroll.setWidget(self._table)
+        table_scroll.setMaximumHeight(180)
+        v.addWidget(self._dist_canvas, 1)
+        v.addWidget(table_scroll, 0)
         tab.setLayout(v)
         self._tabs.addTab(tab, 'Distance')
 
@@ -708,7 +713,8 @@ class CPSVisualizer(QMainWindow):
 
     def _plot_distance_grid(self):
         """Render 8 representative distance metrics as a 2x4 grid of
-        0-1 normalized heatmaps, with a shared colorbar below the grid."""
+        0-1 normalized heatmaps, with a narrow vertical colorbar in its
+        own column (col 5) so heatmaps stay evenly distributed."""
         fig = self._dist_canvas.figure
         fig.clear()
         fig.patch.set_facecolor(FIG_BG)
@@ -724,8 +730,11 @@ class CPSVisualizer(QMainWindow):
         all_metrics = [m for m in self.DIST_GRID if m in self._dist_funcs]
         nrows, ncols = 2, 4
         metrics = all_metrics[:nrows * ncols]
-        fig.set_layout_engine('constrained', wspace=0.35, hspace=0.35,
-                              rect=[0, 0.08, 1, 1])
+        from matplotlib.gridspec import GridSpec
+        gs = GridSpec(nrows, ncols + 1, figure=fig,
+                      width_ratios=[1, 1, 1, 1, 0.06],
+                      wspace=0.25, hspace=0.30,
+                      left=0.08, right=0.99, top=0.95, bottom=0.12)
         images = []
         for pos, mname in enumerate(metrics):
             if mname not in self.result_df_dict:
@@ -739,7 +748,8 @@ class CPSVisualizer(QMainWindow):
                 if hi - lo > 1e-12:
                     vals = (vals - lo) / (hi - lo)
                     np.fill_diagonal(vals, 0.0)
-            ax = fig.add_subplot(nrows, ncols, pos + 1)
+            row, col = pos // ncols, pos % ncols
+            ax = fig.add_subplot(gs[row, col])
             ax.set_facecolor(FIG_BG)
             im = ax.imshow(vals, cmap=ink_colormap(), vmin=0.0, vmax=1.0,
                            aspect='equal')
@@ -747,8 +757,6 @@ class CPSVisualizer(QMainWindow):
             ax.set_title(mname, fontsize=9)
             ax.set_xticks(range(n))
             ax.set_yticks(range(n))
-            col = pos % ncols
-            row = pos // ncols
             if row == nrows - 1:
                 ax.set_xticklabels(names, rotation=45, ha='right', fontsize=7)
             else:
@@ -757,17 +765,18 @@ class CPSVisualizer(QMainWindow):
                 ax.set_yticklabels(names, fontsize=7)
             else:
                 ax.set_yticklabels([])
-        # horizontal colorbar below the grid, centred
+        # vertical colorbar in the narrow 5th column, spanning both rows
+        cax = fig.add_subplot(gs[:, ncols])
         if images:
             import matplotlib as _mpl
             norm = _mpl.colors.Normalize(vmin=0.0, vmax=1.0)
             sm = _mpl.cm.ScalarMappable(cmap=ink_colormap(), norm=norm)
             sm.set_array([])
-            cax = fig.add_axes([0.38, 0.02, 0.24, 0.03])
-            cax.set_facecolor(FIG_BG)
-            cbar = fig.colorbar(sm, cax=cax, orientation='horizontal')
+            cbar = fig.colorbar(sm, cax=cax)
             cbar.set_label('normalized distance (0-1)', fontsize=8)
             cbar.ax.tick_params(labelsize=7)
+        else:
+            cax.axis('off')
         self._dist_canvas.draw()
 
     def _plot_distance_heatmap(self, name):

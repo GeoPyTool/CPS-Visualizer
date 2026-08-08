@@ -1,4 +1,13 @@
 # CPS-Visualizer Release Notes
+## 1.2.6 (8 Aug 2026)
+
+### Improvements
+* Distance tab: data table capped at 180px in a scroll area (drag to see
+  more rows) so the heatmap grid gets maximum vertical space
+* Distance grid: vertical colorbar in a narrow 5th GridSpec column —
+  never intrudes into the 8 heatmaps, evenly distributed 2x4 layout
+* Minimal whitespace around the heatmap grid
+
 ## 1.2.5 (8 Aug 2026)
 
 ### Fixes
