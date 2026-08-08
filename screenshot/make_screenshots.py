@@ -146,6 +146,11 @@ w._analysis_selected(2)
 grab('12_image_quality.png')
 grab('13_aoda.png')
 
+# Figures tab
+w._analysis_tabs.setCurrentIndex(3)
+w._analysis_selected(3)
+grab('14_figures.png')
+
 # 11_comparison: one screenshot per DataSample sub-directory (Geology,
 # Bivalve shell, Tissue).  Ceramics_Archaeology is a single sample x
 # element table (not surface-scan matrices) and needs >=2 datasets for
@@ -168,5 +173,7 @@ for tag, directory in SUBDIRS:
     w._on_cmp_changed()
     app.processEvents()
     w._data_sel.clearSelection()
+    # bivalve needs Blended; others use Auto
+    w._dendro_mode.setCurrentText('Blended' if tag == 'bivalve' else 'Auto')
     w._analysis_selected(1)
     grab(f'11_comparison_{tag}.png')

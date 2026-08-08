@@ -248,18 +248,12 @@ def fig10_pca_comparison(data_dict, elements):
     dfs = [data_dict[e] for e in elements]
     pca_r = compute_pca_embedding(dfs, elements)
     bench = compute_comprehensive_benchmark(dfs, elements, n_jobs=1)
-
-    # Exclude degenerate Boolean set-based metrics that collapse on positive-only data
-    BOOLEAN_DEGENERATE = {'Jaccard', 'Dice', 'Kulsinski', 'Rogers_Tanimoto',
-                          'Russell_Rao', 'Sokal_Michener', 'Sokal_Sneath', 'Yule'}
-    aoda_valid = bench['aoda'].loc[~bench['aoda']['metric'].isin(BOOLEAN_DEGENERATE)]
-    best_row = aoda_valid.iloc[0]
-    best_pipe = '+'.join(best_row['pipeline'].split('+'))
-    best_met = best_row['metric']
-    best_dps = best_row['dps']
+    best_pipe = '+'.join(bench['aoda'].iloc[0]['pipeline'].split('+'))
+    best_met = bench['aoda'].iloc[0]['metric']
 
     from cpsvisualizer.core import apply_transforms, DISTANCE_FUNCTIONS
-    pipe_names = best_row['pipeline'].split('+')
+    from cpsvisualizer.adaptive import PIPELINE_COMBOS
+    pipe_names = bench['aoda'].iloc[0]['pipeline'].split('+')
     met_func = {f.__name__: f for f in DISTANCE_FUNCTIONS}[best_met]
     transformed = [pd.DataFrame(apply_transforms(df.values.copy(), pipe_names)) for df in dfs]
     dist_mat = compute_pairwise_matrix(transformed, elements, met_func)
@@ -289,7 +283,7 @@ def fig10_pca_comparison(data_dict, elements):
     for i in range(len(elements)):
         for j in range(len(elements)):
             ax2.text(j, i, f'{dist_mat.iloc[i, j]:.3f}', ha='center', va='center', fontsize=8)
-    ax2.set_title(f'AODA Optimal (non-degenerate): {best_pipe}+{best_met}\nDPS = {best_dps:.3f}',
+    ax2.set_title(f'AODA Optimal: {best_pipe}+{best_met}\nDPS = {bench["aoda"].iloc[0]["dps"]:.3f}',
                   fontweight='bold')
     plt.colorbar(im2, ax=ax2, shrink=0.8)
 
