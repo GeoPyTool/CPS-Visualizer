@@ -834,9 +834,7 @@ class CPSVisualizer(QMainWindow):
                 if hi - lo > 1e-12:
                     vals = (vals - lo) / (hi - lo)
                     np.fill_diagonal(vals, 0.0)
-                # log-stretch so small differences spread across more
-                # of the grayscale range for finer discrimination
-                vals = np.log1p(vals * 255.0) / np.log1p(255.0)
+                vals = np.sqrt(vals)
             row, col = pos // ncols, pos % ncols
             ax = fig.add_subplot(gs[row, col])
             ax.set_facecolor(FIG_BG)
