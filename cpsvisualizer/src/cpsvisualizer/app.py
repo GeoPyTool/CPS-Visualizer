@@ -825,18 +825,19 @@ class CPSVisualizer(QMainWindow):
         gs = GridSpec(n_rows, 4, figure=fig, wspace=0.06, hspace=0.22,
                       left=0.03, right=0.99, top=0.94, bottom=0.04)
         cols = ['Raw', 'Enhanced+Contour', 'Original+Trace']
-        # build RGB overlay
+        # build RGB overlay using display_scale for proper contrast
+        from scipy.ndimage import zoom as _zoom
         colors = [to_rgba(c)[:3] for c in self._fus_colors[:n_rows]]
-        raw0 = self._fus_rows[0]['raw01']
-        mr, mc = raw0.shape[0], raw0.shape[1]
-        for r in self._fus_rows[1:]:
-            mr = min(mr, r['raw01'].shape[0])
-            mc = min(mc, r['raw01'].shape[1])
+        scaled_data = []
+        for r in self._fus_rows:
+            s, lo, hi = display_scale(r['raw'], 1, 99)
+            scaled_data.append(np.clip((s - lo) / (hi - lo + 1e-12), 0, 1))
+        mr = min(d.shape[0] for d in scaled_data)
+        mc = min(d.shape[1] for d in scaled_data)
         overlay = np.zeros((mr, mc, 3))
         for ch in range(3):
             if ch < n_rows:
-                overlay[:, :, ch] = (self._fus_rows[ch]['raw01'][:mr, :mc] *
-                                     colors[ch][ch])
+                overlay[:, :, ch] = scaled_data[ch][:mr, :mc] * 0.8 + 0.1
         overlay = np.clip(overlay, 0, 1)
         # data panels
         for row_i in range(n_rows):
@@ -846,24 +847,23 @@ class CPSVisualizer(QMainWindow):
                 ax.set_facecolor(FIG_BG)
                 if col_j == 0:
                     s, lo, hi = display_scale(r['raw'], 1, 99)
-                    arr = s
-                    vmin, vmax = lo, hi
+                    arr_disp = _downsample(s, 180, 180)
+                    ax.imshow(arr_disp, cmap=ink_colormap(), vmin=lo, vmax=hi,
+                              aspect='auto', interpolation='nearest')
                 elif col_j == 1:
-                    arr = r['V']
-                    s, lo, hi = display_scale(arr, 0, 100)
-                    vmin, vmax = lo, hi
+                    s, lo, hi = display_scale(r['V'], 0, 100)
+                    arr_disp = _downsample(s, 180, 180)
+                    ax.imshow(arr_disp, cmap=ink_colormap(), vmin=lo, vmax=hi,
+                              aspect='auto', interpolation='nearest')
                 else:
-                    arr = r['raw01']
-                    s, lo, hi = display_scale(arr, 0, 100)
-                    vmin, vmax = lo, hi
-                arr_disp = _downsample(arr, 180, 180)
-                s_disp, _, _ = display_scale(arr_disp, 0, 100)
-                ax.imshow(s_disp, cmap=ink_colormap(), vmin=0, vmax=1,
-                          aspect='auto', interpolation='nearest')
+                    s, lo, hi = display_scale(r['raw'], 1, 99)
+                    arr_disp = _downsample(s, 180, 180)
+                    ax.imshow(arr_disp, cmap=ink_colormap(), vmin=lo, vmax=hi,
+                              aspect='auto', interpolation='nearest')
                 # trace on col 1 & 2
                 if col_j >= 1 and len(r['tx']) > 2:
-                    sx = r['tx'] * (arr_disp.shape[1] / arr.shape[1])
-                    sy = r['ty'] * (arr_disp.shape[0] / arr.shape[0])
+                    sx = r['tx'] * (arr_disp.shape[1] / r['V'].shape[1])
+                    sy = r['ty'] * (arr_disp.shape[0] / r['V'].shape[0])
                     ax.plot(sx, sy, color='#FF3030', linewidth=0.7, alpha=0.85)
                 # contour on col 1
                 if col_j == 1:
@@ -878,7 +878,7 @@ class CPSVisualizer(QMainWindow):
                 ax.set_xticks([]); ax.set_yticks([])
         # RGB overlay spanning all rows (last column)
         ax_ov = fig.add_subplot(gs[:, 3])
-        ax_ov.set_facecolor('#111111')
+        ax_ov.set_facecolor('#1a1a2e')
         from scipy.ndimage import zoom as _zoom
         oh, ow = overlay.shape[:2]
         z = min(200/oh, 200/ow)
