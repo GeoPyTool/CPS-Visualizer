@@ -156,8 +156,8 @@ _load_into(geo_files)
 w._render_sel.setCurrentText('raw'); w._view_idx = 0
 w._analysis_tabs.setCurrentIndex(4)
 w._analysis_selected(4)
-w._fus_pick_a.setCurrentText('Zn')
-w._fus_pick_b.setCurrentText('Cu')
+w._fus_picks[0].setCurrentText('Zn')
+w._fus_picks[1].setCurrentText('Cu')
 grab('15_fusion.png')
 
 # 11_comparison: one screenshot per DataSample sub-directory (Geology,

@@ -684,29 +684,27 @@ class CPSVisualizer(QMainWindow):
         parent.addTab(sc, 'Figures')
 
     def _build_fusion_pane(self, parent):
-        """Fusion — 2 elements × 4 columns (raw / enhanced+curve /
-        original+trace+contour / overlay). All square."""
+        """Fusion — up to 3 elements × 3 columns (raw / enhanced+contour
+        / original+trace) + RGB overlay spanning all rows, rightmost."""
         sc, inner = self._scroll_pane()
         v = QVBoxLayout(inner)
         bar = QHBoxLayout()
-        bar.addWidget(QLabel('A:'))
-        self._fus_pick_a = QComboBox()
-        self._fus_pick_a.currentTextChanged.connect(self._on_fusion_change)
-        bar.addWidget(self._fus_pick_a)
-        self._fus_color_a = QPushButton(' ')
-        self._fus_color_a.setFixedSize(24, 24)
-        self._fus_color_a.setStyleSheet('background-color: #00CCFF; border:1px solid #888;')
-        self._fus_color_a.clicked.connect(lambda: self._pick_fusion_color('a'))
-        bar.addWidget(self._fus_color_a)
-        bar.addWidget(QLabel('B:'))
-        self._fus_pick_b = QComboBox()
-        self._fus_pick_b.currentTextChanged.connect(self._on_fusion_change)
-        bar.addWidget(self._fus_pick_b)
-        self._fus_color_b = QPushButton(' ')
-        self._fus_color_b.setFixedSize(24, 24)
-        self._fus_color_b.setStyleSheet('background-color: #FF6600; border:1px solid #888;')
-        self._fus_color_b.clicked.connect(lambda: self._pick_fusion_color('b'))
-        bar.addWidget(self._fus_color_b)
+        self._fus_picks = []
+        self._fus_color_btns = []
+        default_colors = ['#FF0000', '#00FF00', '#0000FF']
+        for i, (lbl, dc) in enumerate(zip(['A:', 'B:', 'C:'], default_colors)):
+            bar.addWidget(QLabel(lbl))
+            pb = QComboBox()
+            pb.currentTextChanged.connect(self._on_fusion_change)
+            bar.addWidget(pb)
+            self._fus_picks.append(pb)
+            cb = QPushButton(' ')
+            cb.setFixedSize(24, 24)
+            cb.setStyleSheet(f'background-color: {dc}; border:1px solid #888;')
+            idx = i
+            cb.clicked.connect(lambda checked, n=idx: self._pick_fusion_color(n))
+            bar.addWidget(cb)
+            self._fus_color_btns.append(cb)
         bar.addWidget(QLabel('Stat:'))
         self._fus_stat = QComboBox()
         from cpsvisualizer.fusion import STAT_ENHANCE_NAMES
@@ -714,16 +712,6 @@ class CPSVisualizer(QMainWindow):
         self._fus_stat.setCurrentText('robust_zscore')
         self._fus_stat.currentTextChanged.connect(self._on_fusion_change)
         bar.addWidget(self._fus_stat)
-        bar.addWidget(QLabel('Alpha:'))
-        self._fus_alpha = QSlider(Qt.Horizontal)
-        self._fus_alpha.setRange(0, 100)
-        self._fus_alpha.setValue(50)
-        self._fus_alpha.valueChanged.connect(self._on_fusion_change)
-        bar.addWidget(self._fus_alpha)
-        self._fus_alpha_label = QLabel('0.50')
-        self._fus_alpha.valueChanged.connect(
-            lambda v: self._fus_alpha_label.setText(f'{v/100:.2f}'))
-        bar.addWidget(self._fus_alpha_label)
         bar.addWidget(QLabel('Res:'))
         self._fus_res = QComboBox()
         self._fus_res.addItems(['1x', '2x', '4x'])
@@ -731,17 +719,17 @@ class CPSVisualizer(QMainWindow):
         bar.addWidget(self._fus_res)
         bar.addStretch(1)
         v.addLayout(bar)
-        self._fus_canvas = FigureCanvas(Figure(figsize=(20, 12), dpi=self.dpi))
+        self._fus_canvas = FigureCanvas(Figure(figsize=(20, 15), dpi=self.dpi))
         _install_figure_export(self._fus_canvas, 'cps_fusion')
         self._fus_canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self._fus_canvas.setMinimumHeight(750)
+        self._fus_canvas.setMinimumHeight(800)
         v.addWidget(self._fus_canvas)
         parent.addTab(sc, 'Fusion')
-    def _pick_fusion_color(self, which):
+    def _pick_fusion_color(self, idx):
         from PySide6.QtWidgets import QColorDialog
-        btn = self._fus_color_a if which == 'a' else self._fus_color_b
+        btn = self._fus_color_btns[idx]
         current = btn.palette().button().color()
-        color = QColorDialog.getColor(current, self, 'Pick overlay color')
+        color = QColorDialog.getColor(current, self, 'Pick channel color')
         if color.isValid():
             btn.setStyleSheet(f'background-color: {color.name()}; border:1px solid #888;')
             self._on_fusion_change()
@@ -750,35 +738,31 @@ class CPSVisualizer(QMainWindow):
             self._fill_fusion_picks()
             self._render_fusion()
     def _fill_fusion_picks(self):
-        for p in (self._fus_pick_a, self._fus_pick_b):
+        for p in self._fus_picks:
             cur = p.currentText()
-            p.blockSignals(True); p.clear()
-            p.addItems(self.df_name_list)
+            p.blockSignals(True); p.clear(); p.addItems(self.df_name_list)
             if cur in self.df_name_list: p.setCurrentText(cur)
             p.blockSignals(False)
-        if len(self.df_name_list) >= 2 and not self._fus_pick_b.currentText():
-            self._fus_pick_b.setCurrentIndex(1)
+        if len(self.df_name_list) >= 2 and not self._fus_picks[1].currentText():
+            self._fus_picks[1].setCurrentIndex(1)
     def _render_fusion(self):
-        from cpsvisualizer.fusion import STAT_ENHANCE
         from cpsvisualizer.core import log_transform, equalize_hist
         from scipy.ndimage import sobel, gaussian_filter, zoom
-        na = self._fus_pick_a.currentText()
-        nb = self._fus_pick_b.currentText()
-        if not na or not nb or na not in self.df_name_list or nb not in self.df_name_list:
-            return
         zf = int(self._fus_res.currentText().replace('x', ''))
-        sn = self._fus_stat.currentText()
-        # extract colors from button style
         import re
-        self._fus_colors = {}
-        for tag, btn in [('a', self._fus_color_a), ('b', self._fus_color_b)]:
+        self._fus_colors = []
+        for btn in self._fus_color_btns:
             m = re.search(r'#[0-9a-fA-F]{6}', btn.styleSheet())
-            self._fus_colors[tag] = m.group() if m else ('#00CCFF' if tag == 'a' else '#FF6600')
-        self._fus_data = {'a': [], 'b': []}
-        for tag, el in [('a', na), ('b', nb)]:
-            data = self.df_list[self.df_name_list.index(el)].to_numpy().copy()
+            self._fus_colors.append(m.group() if m else '#FF0000')
+        self._fus_rows = []
+        for i in range(3):
+            nm = self._fus_picks[i].currentText()
+            if not nm or nm not in self.df_name_list:
+                if i < 2: continue  # first two are required
+                else: break
+            data = self.df_list[self.df_name_list.index(nm)].to_numpy().copy()
             raw = np.nan_to_num(data.astype(float), nan=0, posinf=0, neginf=0)
-            raw = (raw - raw.min()) / (raw.max() - raw.min() + 1e-10)
+            raw01 = (raw - raw.min()) / (raw.max() - raw.min() + 1e-10)
             V = equalize_hist(log_transform(data))
             V = (V - V.min()) / (V.max() - V.min() + 1e-10)
             d2 = gaussian_filter(np.nan_to_num(data.astype(float), nan=0, posinf=0, neginf=0), sigma=1.0)
@@ -786,13 +770,13 @@ class CPSVisualizer(QMainWindow):
             E = (E - E.min()) / (E.max() - E.min() + 1e-10)
             tx, ty, fd = self._compute_trajectory(data)
             if zf > 1:
-                raw = zoom(raw, zf, order=3)
+                raw = zoom(raw, zf, order=3); raw01 = zoom(raw01, zf, order=3)
                 V = zoom(V, zf, order=3); E = zoom(E, zf, order=3)
-            self._fus_data[tag] = [raw, V, E, tx, ty, fd, el]
+            self._fus_rows.append({'name': nm, 'raw': raw, 'raw01': raw01,
+                                   'V': V, 'E': E, 'tx': tx, 'ty': ty, 'fd': fd})
         self._render_fusion_display()
     def _compute_trajectory(self, data):
-        d = np.nan_to_num(np.asarray(data, dtype=float),
-                          nan=0.0, posinf=0.0, neginf=0.0)
+        d = np.nan_to_num(np.asarray(data, dtype=float), nan=0.0, posinf=0.0, neginf=0.0)
         rows, cols = d.shape
         col_weights = d.sum(axis=1)
         valid = col_weights > 0
@@ -804,9 +788,8 @@ class CPSVisualizer(QMainWindow):
                                where=col_weights > 0)
         centroid_y = np.arange(rows).astype(float)
         window = max(3, int(rows * 0.05))
-        kernel = np.ones(window) / window
-        cx = np.convolve(centroid_x, kernel, mode='same')
-        cy = np.convolve(centroid_y, kernel, mode='same')
+        cx = np.convolve(centroid_x, np.ones(window)/window, mode='same')
+        cy = np.convolve(centroid_y, np.ones(window)/window, mode='same')
         try:
             thresh = d.mean() + d.std()
             binary = (d > thresh).astype(np.uint8)
@@ -830,73 +813,82 @@ class CPSVisualizer(QMainWindow):
             fdim = 0.0
         return cx, cy, fdim
     def _render_fusion_display(self, _=None):
-        if not hasattr(self, '_fus_data') or not self._fus_data.get('a'):
+        if not self._fus_rows:
             return
         fig = self._fus_canvas.figure
         fig.clear(); fig.patch.set_facecolor(FIG_BG)
+        import re
         from matplotlib.gridspec import GridSpec
         from matplotlib.colors import to_rgba
-        gs = GridSpec(2, 4, figure=fig, wspace=0.06, hspace=0.25,
-                      left=0.03, right=0.99, top=0.93, bottom=0.04)
-        cols = ['Raw', 'Enhanced+Curve', 'Original+Trace', 'Overlay']
-        colors = self._fus_colors
-        da = self._fus_data['a']; db = self._fus_data['b']
-        raw_a, raw_b = da[0], db[0]
-        mr = min(raw_a.shape[0], raw_b.shape[0])
-        mc = min(raw_a.shape[1], raw_b.shape[1])
-        ca = np.array(to_rgba(colors['a']))[:3]
-        cb = np.array(to_rgba(colors['b']))[:3]
+        n_rows = len(self._fus_rows)
+        # grid: n_rows × 3 (data) + 1 overlay column spanning all rows
+        gs = GridSpec(n_rows, 4, figure=fig, wspace=0.06, hspace=0.22,
+                      left=0.03, right=0.99, top=0.94, bottom=0.04)
+        cols = ['Raw', 'Enhanced+Contour', 'Original+Trace']
+        # build RGB overlay
+        colors = [to_rgba(c)[:3] for c in self._fus_colors[:n_rows]]
+        raw0 = self._fus_rows[0]['raw01']
+        mr, mc = raw0.shape[0], raw0.shape[1]
+        for r in self._fus_rows[1:]:
+            mr = min(mr, r['raw01'].shape[0])
+            mc = min(mc, r['raw01'].shape[1])
         overlay = np.zeros((mr, mc, 3))
         for ch in range(3):
-            overlay[:, :, ch] = (raw_a[:mr, :mc] * ca[ch] +
-                                 raw_b[:mr, :mc] * cb[ch])
-        overlay = np.clip(overlay / overlay.max() if overlay.max() > 0 else overlay, 0, 1)
-        for row_i, tag in enumerate(['a', 'b']):
-            el_raw, V, E, tx, ty, fd, el = self._fus_data[tag]
-            for col_j in range(4):
+            if ch < n_rows:
+                overlay[:, :, ch] = (self._fus_rows[ch]['raw01'][:mr, :mc] *
+                                     colors[ch][ch])
+        overlay = np.clip(overlay, 0, 1)
+        # data panels
+        for row_i in range(n_rows):
+            r = self._fus_rows[row_i]
+            for col_j in range(3):
                 ax = fig.add_subplot(gs[row_i, col_j])
                 ax.set_facecolor(FIG_BG)
-                if col_j == 3:
-                    if row_i == 1:
-                        ax.axis('off'); continue
-                    from scipy.ndimage import zoom as _zoom
-                    h, w = overlay.shape[:2]
-                    z_r = min(180/h, 180/w)
-                    if z_r < 1:
-                        overlay_disp = _zoom(overlay, (z_r, z_r, 1), order=1)
-                    else:
-                        overlay_disp = overlay
-                    ax.imshow(np.clip(overlay_disp, 0, 1), aspect='auto')
-                    ax.set_aspect(_square_aspect(*overlay_disp.shape[:2]),
-                                  adjustable='box', anchor='C')
-                    ax.set_title('Overlay', fontsize=7)
-                    ax.set_xticks([]); ax.set_yticks([])
-                    continue
                 if col_j == 0:
-                    arr = el_raw
+                    s, lo, hi = display_scale(r['raw'], 1, 99)
+                    arr = s
+                    vmin, vmax = lo, hi
                 elif col_j == 1:
-                    arr = V
+                    arr = r['V']
+                    s, lo, hi = display_scale(arr, 0, 100)
+                    vmin, vmax = lo, hi
                 else:
-                    arr = el_raw
+                    arr = r['raw01']
+                    s, lo, hi = display_scale(arr, 0, 100)
+                    vmin, vmax = lo, hi
                 arr_disp = _downsample(arr, 180, 180)
-                s, lo, hi = display_scale(arr_disp, 0, 100)
-                ax.imshow(s, cmap=ink_colormap(), vmin=lo, vmax=hi,
+                s_disp, _, _ = display_scale(arr_disp, 0, 100)
+                ax.imshow(s_disp, cmap=ink_colormap(), vmin=0, vmax=1,
                           aspect='auto', interpolation='nearest')
-                if col_j >= 1 and len(tx) > 2:
-                    sx = tx * (arr_disp.shape[1] / arr.shape[1])
-                    sy = ty * (arr_disp.shape[0] / arr.shape[0])
-                    ax.plot(sx, sy, color='#FF4040', linewidth=0.8, alpha=0.85)
-                if col_j == 2:
-                    e_disp = _downsample(E, 180, 180)
-                    ax.contour(e_disp, levels=[0.3, 0.6, 0.9],
-                               colors='cyan', linewidths=0.4, alpha=0.6)
+                # trace on col 1 & 2
+                if col_j >= 1 and len(r['tx']) > 2:
+                    sx = r['tx'] * (arr_disp.shape[1] / arr.shape[1])
+                    sy = r['ty'] * (arr_disp.shape[0] / arr.shape[0])
+                    ax.plot(sx, sy, color='#FF3030', linewidth=0.7, alpha=0.85)
+                # contour on col 1
+                if col_j == 1:
+                    e_disp = _downsample(r['E'], 180, 180)
+                    ax.contour(e_disp, levels=[0.4, 0.7],
+                               colors='cyan', linewidths=0.35, alpha=0.5)
                 ax.set_aspect(_square_aspect(*arr_disp.shape),
                               adjustable='box', anchor='C')
-                ttl = f'{el}  {cols[col_j]}'
-                if col_j == 1 and fd: ttl += f' (FD={fd:.3f})'
+                ttl = f'{r["name"]}  {cols[col_j]}'
+                if col_j == 1 and r['fd']: ttl += f' (FD={r["fd"]:.3f})'
                 ax.set_title(ttl, fontsize=7)
                 ax.set_xticks([]); ax.set_yticks([])
-        fig.suptitle(f'Fusion: {da[6]} & {db[6]}', fontsize=11, y=0.97)
+        # RGB overlay spanning all rows (last column)
+        ax_ov = fig.add_subplot(gs[:, 3])
+        ax_ov.set_facecolor('#111111')
+        from scipy.ndimage import zoom as _zoom
+        oh, ow = overlay.shape[:2]
+        z = min(200/oh, 200/ow)
+        ov_disp = _zoom(overlay, (z, z, 1), order=1) if z < 1 else overlay
+        ax_ov.imshow(np.clip(ov_disp, 0, 1), aspect='auto')
+        ax_ov.set_aspect(_square_aspect(*ov_disp.shape[:2]),
+                         adjustable='box', anchor='C')
+        names = [r['name'] for r in self._fus_rows]
+        ax_ov.set_title('+'.join(names), fontsize=8)
+        ax_ov.set_xticks([]); ax_ov.set_yticks([])
         self._fus_canvas.draw()
     def _selected_data_indices(self):
         return [self.df_name_list.index(it.text())
