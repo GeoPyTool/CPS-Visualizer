@@ -1,4 +1,16 @@
 # CPS-Visualizer Release Notes
+## 1.3.8 (8 Aug 2026)
+
+### New Features
+* Right-click export on all figures: every matplotlib canvas now has
+  a context menu with "Save as PNG / PDF / SVG", with sensible default
+  filenames (cps_map, cps_distance, cps_pca, cps_correlation,
+  cps_comparison, cps_figures)
+* Right-click export on all tables: every table view now has
+  "Save as CSV / XLSX" in the context menu, with sensible default
+  filenames (cps_distance_table, cps_image_quality, cps_aoda)
+* Users can override the default filename in the save dialog
+
 ## 1.3.7 (8 Aug 2026)
 
 ### Fixes

@@ -63,6 +63,38 @@ plt.rcParams['pdf.fonttype'] = 'truetype'
 TRANSFORM_NAMES = list(TRANSFORM_FUNCTIONS.keys())
 
 
+def _install_figure_export(canvas, default_name):
+    """Install a right-click context menu on *canvas* (a FigureCanvas)
+    that lets the user save the figure as PNG / PDF / SVG with a
+    sensible default filename."""
+    from PySide6.QtWidgets import QMenu
+    # grab the native widget that actually receives mouse events
+    widget = canvas
+    base = canvas.contextMenuEvent
+
+    def _ctx_menu(event):
+        menu = QMenu(widget)
+        for label, ext, filt in [
+                ('Save as PNG', '.png',
+                 'PNG (*.png)'),
+                ('Save as PDF', '.pdf',
+                 'PDF (*.pdf)'),
+                ('Save as SVG', '.svg',
+                 'SVG (*.svg)')]:
+            act = QAction(label, widget)
+            def _save(_checked, e=ext, f=filt, dn=default_name):
+                path, _ = QFileDialog.getSaveFileName(
+                    widget, 'Save Figure As', f'{dn}{e}', f)
+                if not path:
+                    return
+                dpi = widget.dpi * 6 if path.lower().endswith('.png') else None
+                widget.figure.savefig(path, dpi=dpi, bbox_inches='tight')
+            act.triggered.connect(_save)
+            menu.addAction(act)
+        menu.exec_(event.globalPos())
+    canvas.contextMenuEvent = _ctx_menu
+
+
 class CPSApplication(QApplication):
     """QApplication subclass that catches exceptions raised inside Qt
     signal/slot callbacks and shows them in a message box instead of
@@ -201,11 +233,13 @@ class PandasModel(QAbstractTableModel):
 
 
 class CustomQTableView(QTableView):
-    """Table view with copy-to-clipboard context menu."""
+    """Table view with copy-to-clipboard and save CSV/XLSX context menu."""
+    _export_name = 'cps_table'
+
     def __init__(self, *args):
         super().__init__(*args)
         self.setEditTriggers(QAbstractItemView.NoEditTriggers |
-                             QAbstractItemView.DoubleClicked)
+                              QAbstractItemView.DoubleClicked)
         self.setSortingEnabled(True)
 
     def keyPressEvent(self, event):
@@ -216,7 +250,29 @@ class CustomQTableView(QTableView):
         act = QAction("Copy", self)
         act.triggered.connect(self._copy_sel)
         menu.addAction(act)
+        menu.addSeparator()
+        for label, ext in [('Save as CSV', '.csv'),
+                           ('Save as XLSX', '.xlsx')]:
+            act2 = QAction(label, self)
+            act2.triggered.connect(lambda _checked, e=ext: self._save_table(e))
+            menu.addAction(act2)
         menu.exec_(event.globalPos())
+
+    def _save_table(self, ext):
+        model = self.model()
+        if not isinstance(model, PandasModel) or model._df is None:
+            return
+        default = f'{self._export_name}{ext}'
+        path, _ = QFileDialog.getSaveFileName(
+            self, f'Save Table As', default,
+            f'CSV Files (*.csv)' if ext == '.csv'
+            else f'Excel Files (*.xlsx)')
+        if not path:
+            return
+        if ext == '.csv':
+            model._df.to_csv(path, encoding='utf-8')
+        else:
+            model._df.to_excel(path)
 
     def _copy_sel(self):
         sel = self.selectionModel().selection().indexes()
@@ -479,6 +535,7 @@ class CPSVisualizer(QMainWindow):
         # map figure in a scroll area (full-scan map may be large)
         self._map_fig = Figure(figsize=(7, 7), dpi=self.dpi)
         self._map_canvas = FigureCanvas(self._map_fig)
+        _install_figure_export(self._map_canvas, 'cps_map')
         self._map_canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -501,7 +558,9 @@ class CPSVisualizer(QMainWindow):
         tab = QWidget()
         v = QVBoxLayout()
         self._dist_canvas = FigureCanvas(Figure(figsize=(12, 6), dpi=self.dpi))
+        _install_figure_export(self._dist_canvas, 'cps_distance')
         self._table = CustomQTableView()
+        self._table._export_name = 'cps_distance_table'
         self._table.setMaximumHeight(160)
         table_scroll = QScrollArea()
         table_scroll.setWidgetResizable(True)
@@ -537,7 +596,9 @@ class CPSVisualizer(QMainWindow):
         sc, inner = self._scroll_pane()
         h = QHBoxLayout(inner)
         self._pca_canvas = FigureCanvas(Figure(figsize=(6, 6), dpi=self.dpi))
+        _install_figure_export(self._pca_canvas, 'cps_pca')
         self._corr_canvas = FigureCanvas(Figure(figsize=(6, 6), dpi=self.dpi))
+        _install_figure_export(self._corr_canvas, 'cps_correlation')
         for c in (self._pca_canvas, self._corr_canvas):
             c.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
             c.setMinimumHeight(400)
@@ -561,6 +622,7 @@ class CPSVisualizer(QMainWindow):
         v.addLayout(mode_bar)
 
         self._cmp_canvas = FigureCanvas(Figure(figsize=(12, 8), dpi=self.dpi))
+        _install_figure_export(self._cmp_canvas, 'cps_comparison')
         self._cmp_canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self._cmp_canvas.setMinimumHeight(600)
         v.addWidget(self._cmp_canvas)
@@ -576,6 +638,7 @@ class CPSVisualizer(QMainWindow):
         qv.addWidget(QLabel('Image Quality Metrics'))
         self._quality_table = CustomQTableView()
         self._quality_table.setModel(PandasModel())
+        self._quality_table._export_name = 'cps_image_quality'
         q_scroll = QScrollArea()
         q_scroll.setWidgetResizable(True)
         q_scroll.setWidget(self._quality_table)
@@ -587,6 +650,7 @@ class CPSVisualizer(QMainWindow):
         av.addWidget(QLabel('AODA Optimization Results'))
         self._aoda_table = CustomQTableView()
         self._aoda_table.setModel(PandasModel())
+        self._aoda_table._export_name = 'cps_aoda'
         a_scroll = QScrollArea()
         a_scroll.setWidgetResizable(True)
         a_scroll.setWidget(self._aoda_table)
@@ -599,6 +663,7 @@ class CPSVisualizer(QMainWindow):
         sc, inner = self._scroll_pane()
         v = QVBoxLayout(inner)
         self._fig_canvas = FigureCanvas(Figure(figsize=(14, 10), dpi=self.dpi))
+        _install_figure_export(self._fig_canvas, 'cps_figures')
         self._fig_canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self._fig_canvas.setMinimumHeight(700)
         v.addWidget(self._fig_canvas)
