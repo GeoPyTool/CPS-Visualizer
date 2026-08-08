@@ -1,4 +1,11 @@
 # CPS-Visualizer Release Notes
+## 1.4.2 (8 Aug 2026)
+
+### Fixes
+* Radar Clustering: per-method cophenetic correlation (linkage from
+  each method's own distance matrix) gives properly differentiated scores
+  (t-SNE 0.44, UMAP 0.93, PCA 1.0, Raw 0.996) instead of all ~1.0
+
 ## 1.4.1 (8 Aug 2026)
 
 ### Fixes

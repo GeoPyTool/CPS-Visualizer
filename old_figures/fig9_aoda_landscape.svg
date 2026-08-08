@@ -1,0 +1,609 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="1076.459655pt" height="565.157969pt" viewBox="0 0 1076.459655 565.157969" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-08-08T09:14:31.838013</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.10.8, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 565.157969 
+L 1076.459655 565.157969 
+L 1076.459655 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 177.361094 496.128594 
+L 945.25776 496.128594 
+L 945.25776 35.390594 
+L 177.361094 35.390594 
+z
+" style="fill: #ffffff"/>
+   </g>
+   <g clip-path="url(#pbf0e0d4478)">
+    <image xlink:href="data:image/png;base64,
+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AAECKWAEAAACkiBUAAABAilgBAAAApIgVAAAAQIpYAQAAAKSIFQAAAECKWAEAAACkiBUAAABAilgBAAAApIgVAAAAQIpYAQAAAKSIFQAAAECKWAEAAACkiBUAAABAilgBAAAApIgVAAAAQIpYAQAAAKSIFQAAAECKWAEAAACkiBUAAABAilgBAAAApIgVAAAAQIpYAQAAAKSIFQAAAECKWAEAAACkiBUAAABAilgBAAAApOxHDwDGefjoaprjP1lHL9ieq08+X2axn+QL8LvH89xTc5zof3ww0bNqFrfP/QQ8ts+ev1hmcfXs+egJANfyZgUAAACQIlYAAAAAKWIFAAAAkCJWAAAAACliBQAAAJAiVgAAAAApYgUAAACQIlYAAAAAKWIFAAAAkCJWAAAAACliBQAAAJAiVgAAAAApYgUAAACQIlYAAAAAKWIFAAAAkCJWAAAAACliBQAAAJAiVgAAAAApYgUAAACQIlYAAAAAKWIFAAAAkCJWAAAAACliBQAAAJAiVgAAAAApYgUAAACQIlYAAAAAKWIFAAAAkCJWAAAAACliBQAAAJAiVgAAAAApYgUAAACQIlYAAAAAKWIFAAAAkCJWAAAAACliBQAAAJAiVgAAAAApYgUAAACQIlYAAAAAKWIFAAAAkCJWAAAAACliBQAAAJAiVgAAAAAp+9EDABjjrYvzaY7+zx8/W2awrusyi/3JPFs5vucvXjrWI3vt/JVpzvSrX3p19ASAa3mzAgAAAEgRKwAAAIAUsQIAAABIESsAAACAFLECAAAASBErAAAAgBSxAgAAAEgRKwAAAIAUsQIAAABIESsAAACAFLECAAAASBErAAAAgBSxAgAAAEgRKwAAAIAUsQIAAABIESsAAACAFLECAAAASBErAAAAgBSxAgAAAEgRKwAAAIAUsQIAAABIESsAAACAFLECAAAASBErAAAAgBSxAgAAAEgRKwAAAIAUsQIAAABIESsAAACAFLECAAAASBErAAAAgBSxAgAAAEgRKwAAAIAUsQIAAABIESsAAACAFLECAAAASBErAAAAgBSxAgAAAEgRKwAAAIAUsQIAAABIESsAAACAFLECAAAASBErAAAAgBSxAgAAAEgRKwAAAIAUsQIAAABIESsAAACAFLECAAAASBErAAAAgBSxAgAAAEgRKwAAAIAUsQIAAABIESsAAACAFLECAAAASBErAAAAgBSxAgAAAEgRKwAAAIAUsQIAAABIESsAAACAFLECAAAASBErAAAAgBSxAgAAAEgRKwAAAIAUsQIAAABIESsAAACAFLECAAAASBErAAAAgBSxAgAAAEgRKwAAAIAUsQIAAABIESsAAACAFLECAAAASBErAAAAgBSxAgAAAEgRKwAAAIAUsQIAAABIESsAAACAFLECAAAASBErAAAAgBSxAgAAAEgRKwAAAIAUsQIAAABIESsAAACAFLECAAAASBErAAAAgJT96AHAOD//yXemOf57d85HT9icX/zm0TKLX33wZJnB9x/cXWbx/u+fLrP43uXroydszi9/+3j0hM25e+t0mcWLl4fREwCu5c0KAAAAIEWsAAAAAFLECgAAACBFrAAAAABSxAoAAAAgRawAAAAAUsQKAAAAIEWsAAAAAFLECgAAACBFrAAAAABSxAoAAAAgRawAAAAAUsQKAAAAIEWsAAAAAFLECgAAACBFrAAAAABSxAoAAAAgRawAAAAAUsQKAAAAIEWsAAAAAFLECgAAACBFrAAAAABSxAoAAAAgRawAAAAAUsQKAAAAIEWsAAAAAFLECgAAACBFrAAAAABSxAoAAAAgRawAAAAAUsQKAAAAIEWsAAAAAFLECgAAACBFrAAAAABSxAoAAAAgRawAAAAAUsQKAAAAIEWsAAAAAFLECgAAACBFrAAAAABSxAoAAAAgRawAAAAAUtbLd987jB4BcJ2T1Rkd2yu7eXr1yTrHF2C/m2Pnv830x/8w09hJvHa2W2Yxy/3/5sXZMosfvn1v9ITN+ekPvj56AmzOPL9UAQAAgBtBrAAAAABSxAoAAAAgRawAAAAAUsQKAAAAIEWsAAAAAFLECgAAACBFrAAAAABSxAoAAAAgRawAAAAAUsQKAAAAIEWsAAAAAFLECgAAACBFrAAAAABSxAoAAAAgRawAAAAAUsQKAAAAIEWsAAAAAFLECgAAACBFrAAAAABSxAoAAAAgRawAAAAAUsQKAAAAIEWsAAAAAFLECgAAACBFrAAAAABSxAoAAAAgRawAAAAAUsQKAAAAIEWsAAAAAFLECgAAACBFrAAAAABSxAoAAAAgRawAAAAAUsQKAAAAIEWsAAAAAFLECgAAACBFrAAAAABSxAoAAAAgRawAAAAAUsQKAAAAIGU/egBszRsXZ8ssbp3N8wj40Xe/PHrC5rz/h6fLLN6+f2eZwel+nv8BPP/8sMzisxcvR0/YnF9/+PEyi7/87ZNlBvPcUcvyhdPd6AkA15rnVxUAAABwI4gVAAAAQIpYAQAAAKSIFQAAAECKWAEAAACkiBUAAABAilgBAAAApIgVAAAAQIpYAQAAAKSIFQAAAECKWAEAAACkiBUAAABAilgBAAAApIgVAAAAQIpYAQAAAKSIFQAAAECKWAEAAACkiBUAAABAilgBAAAApIgVAAAAQIpYAQAAAKSIFQAAAECKWAEAAACkiBUAAABAilgBAAAApIgVAAAAQIpYAQAAAKSIFQAAAECKWAEAAACkiBUAAABAilgBAAAApIgVAAAAQIpYAQAAAKSIFQAAAECKWAEAAACkiBUAAABAilgBAAAApIgVAAAAQIpYAQAAAKSIFQAAAECKWAEAAACkiBUAAADAUvIvxr92d0ei/NgAAAAASUVORK5CYII=" id="imagedf1b9bc2fe" transform="scale(1 -1) translate(0 -460.8)" x="177.361094" y="-35.328594" width="768.24" height="460.8"/>
+   </g>
+   <g id="matplotlib.axis_1">
+    <g id="xtick_1">
+     <g id="line2d_1">
+      <defs>
+       <path id="me1b419214f" d="M 0 0 
+L 0 3.5 
+" style="stroke: #000000; stroke-width: 0.8"/>
+      </defs>
+      <g>
+       <use xlink:href="#me1b419214f" x="192.719027" y="496.128594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_1">
+      <text style="font-size: 6px; font-family: 'Times New Roman', serif" transform="translate(194.154808 533.464219) rotate(-90)">Russell_Rao</text>
+     </g>
+    </g>
+    <g id="xtick_2">
+     <g id="line2d_2">
+      <g>
+       <use xlink:href="#me1b419214f" x="223.434894" y="496.128594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_2">
+      <text style="font-size: 6px; font-family: 'Times New Roman', serif" transform="translate(224.870675 542.785781) rotate(-90)">Sokal_Michener</text>
+     </g>
+    </g>
+    <g id="xtick_3">
+     <g id="line2d_3">
+      <g>
+       <use xlink:href="#me1b419214f" x="254.15076" y="496.128594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_3">
+      <text style="font-size: 6px; font-family: 'Times New Roman', serif" transform="translate(255.586542 536.125781) rotate(-90)">Sokal_Sneath</text>
+     </g>
+    </g>
+    <g id="xtick_4">
+     <g id="line2d_4">
+      <g>
+       <use xlink:href="#me1b419214f" x="284.866627" y="496.128594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_4">
+      <text style="font-size: 6px; font-family: 'Times New Roman', serif" transform="translate(286.296783 526.121719) rotate(-90)">MI_score</text>
+     </g>
+    </g>
+    <g id="xtick_5">
+     <g id="line2d_5">
+      <g>
+       <use xlink:href="#me1b419214f" x="315.582494" y="496.128594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_5">
+      <text style="font-size: 6px; font-family: 'Times New Roman', serif" transform="translate(317.015463 531.119531) rotate(-90)">MI_score_f</text>
+     </g>
+    </g>
+    <g id="xtick_6">
+     <g id="line2d_6">
+      <g>
+       <use xlink:href="#me1b419214f" x="346.29836" y="496.128594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_6">
+      <text style="font-size: 6px; font-family: 'Times New Roman', serif" transform="translate(347.739767 528.119531) rotate(-90)">luminance</text>
+     </g>
+    </g>
+    <g id="xtick_7">
+     <g id="line2d_7">
+      <g>
+       <use xlink:href="#me1b419214f" x="377.014227" y="496.128594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_7">
+      <text style="font-size: 6px; font-family: 'Times New Roman', serif" transform="translate(378.455633 522.122344) rotate(-90)">contrast</text>
+     </g>
+    </g>
+    <g id="xtick_8">
+     <g id="line2d_8">
+      <g>
+       <use xlink:href="#me1b419214f" x="407.730094" y="496.128594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_8">
+      <text style="font-size: 6px; font-family: 'Times New Roman', serif" transform="translate(409.165875 540.123281) rotate(-90)">Hsim_Distance</text>
+     </g>
+    </g>
+    <g id="xtick_9">
+     <g id="line2d_9">
+      <g>
+       <use xlink:href="#me1b419214f" x="438.44596" y="496.128594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_9">
+      <text style="font-size: 6px; font-family: 'Times New Roman', serif" transform="translate(439.881742 540.788906) rotate(-90)">Close_Distance</text>
+     </g>
+    </g>
+    <g id="xtick_10">
+     <g id="line2d_10">
+      <g>
+       <use xlink:href="#me1b419214f" x="469.161827" y="496.128594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_10">
+      <text style="font-size: 6px; font-family: 'Times New Roman', serif" transform="translate(470.597608 529.792969) rotate(-90)">Chebyshev</text>
+     </g>
+    </g>
+    <g id="xtick_11">
+     <g id="line2d_11">
+      <g>
+       <use xlink:href="#me1b419214f" x="499.877694" y="496.128594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_11">
+      <text style="font-size: 6px; font-family: 'Times New Roman', serif" transform="translate(501.3191 525.116719) rotate(-90)">Canberra</text>
+     </g>
+    </g>
+    <g id="xtick_12">
+     <g id="line2d_12">
+      <g>
+       <use xlink:href="#me1b419214f" x="530.59356" y="496.128594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_12">
+      <text style="font-size: 6px; font-family: 'Times New Roman', serif" transform="translate(532.034967 528.787969) rotate(-90)">Manhattan</text>
+     </g>
+    </g>
+    <g id="xtick_13">
+     <g id="line2d_13">
+      <g>
+       <use xlink:href="#me1b419214f" x="561.309427" y="496.128594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_13">
+      <text style="font-size: 6px; font-family: 'Times New Roman', serif" transform="translate(562.745208 532.461094) rotate(-90)">Bray_Curtis</text>
+     </g>
+    </g>
+    <g id="xtick_14">
+     <g id="line2d_14">
+      <g>
+       <use xlink:href="#me1b419214f" x="592.025294" y="496.128594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_14">
+      <text style="font-size: 6px; font-family: 'Times New Roman', serif" transform="translate(593.4667 530.466094) rotate(-90)">Minkowski</text>
+     </g>
+    </g>
+    <g id="xtick_15">
+     <g id="line2d_15">
+      <g>
+       <use xlink:href="#me1b419214f" x="622.74116" y="496.128594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_15">
+      <text style="font-size: 6px; font-family: 'Times New Roman', serif" transform="translate(624.182567 527.117344) rotate(-90)">Euclidean</text>
+     </g>
+    </g>
+    <g id="xtick_16">
+     <g id="line2d_16">
+      <g>
+       <use xlink:href="#me1b419214f" x="653.457027" y="496.128594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_16">
+      <text style="font-size: 6px; font-family: 'Times New Roman', serif" transform="translate(654.898433 519.796406) rotate(-90)">Cosine</text>
+     </g>
+    </g>
+    <g id="xtick_17">
+     <g id="line2d_17">
+      <g>
+       <use xlink:href="#me1b419214f" x="684.172894" y="496.128594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_17">
+      <text style="font-size: 6px; font-family: 'Times New Roman', serif" transform="translate(685.6143 530.453906) rotate(-90)">Correlation</text>
+     </g>
+    </g>
+    <g id="xtick_18">
+     <g id="line2d_18">
+      <g>
+       <use xlink:href="#me1b419214f" x="714.88876" y="496.128594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_18">
+      <text style="font-size: 6px; font-family: 'Times New Roman', serif" transform="translate(716.330167 524.120156) rotate(-90)">structure</text>
+     </g>
+    </g>
+    <g id="xtick_19">
+     <g id="line2d_19">
+      <g>
+       <use xlink:href="#me1b419214f" x="745.604627" y="496.128594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_19">
+      <text style="font-size: 6px; font-family: 'Times New Roman', serif" transform="translate(747.040408 541.121719) rotate(-90)">MI_regression_</text>
+     </g>
+    </g>
+    <g id="xtick_20">
+     <g id="line2d_20">
+      <g>
+       <use xlink:href="#me1b419214f" x="776.320494" y="496.128594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_20">
+      <text style="font-size: 6px; font-family: 'Times New Roman', serif" transform="translate(777.756275 538.121719) rotate(-90)">MI_regression</text>
+     </g>
+    </g>
+    <g id="xtick_21">
+     <g id="line2d_21">
+      <g>
+       <use xlink:href="#me1b419214f" x="807.03636" y="496.128594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_21">
+      <text style="font-size: 6px; font-family: 'Times New Roman', serif" transform="translate(808.477767 521.115469) rotate(-90)">Jaccard</text>
+     </g>
+    </g>
+    <g id="xtick_22">
+     <g id="line2d_22">
+      <g>
+       <use xlink:href="#me1b419214f" x="837.752227" y="496.128594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_22">
+      <text style="font-size: 6px; font-family: 'Times New Roman', serif" transform="translate(839.193633 514.455469) rotate(-90)">Dice</text>
+     </g>
+    </g>
+    <g id="xtick_23">
+     <g id="line2d_23">
+      <g>
+       <use xlink:href="#me1b419214f" x="868.468094" y="496.128594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_23">
+      <text style="font-size: 6px; font-family: 'Times New Roman', serif" transform="translate(869.9095 526.132969) rotate(-90)">Kulsinski</text>
+     </g>
+    </g>
+    <g id="xtick_24">
+     <g id="line2d_24">
+      <g>
+       <use xlink:href="#me1b419214f" x="899.18396" y="496.128594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_24">
+      <text style="font-size: 6px; font-family: 'Times New Roman', serif" transform="translate(900.619742 543.036094) rotate(-90)">Rogers_Tanimot</text>
+     </g>
+    </g>
+    <g id="xtick_25">
+     <g id="line2d_25">
+      <g>
+       <use xlink:href="#me1b419214f" x="929.899827" y="496.128594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_25">
+      <text style="font-size: 6px; font-family: 'Times New Roman', serif" transform="translate(931.341233 514.124531) rotate(-90)">Yule</text>
+     </g>
+    </g>
+    <g id="text_26">
+     <text style="font-size: 12px; font-family: 'Times New Roman', serif; text-anchor: middle" x="561.309427" y="555.368594" transform="rotate(-0 561.309427 555.368594)">Distance / Similarity Metric</text>
+    </g>
+   </g>
+   <g id="matplotlib.axis_2">
+    <g id="ytick_1">
+     <g id="line2d_26">
+      <defs>
+       <path id="mdecd682d29" d="M 0 0 
+L -3.5 0 
+" style="stroke: #000000; stroke-width: 0.8"/>
+      </defs>
+      <g>
+       <use xlink:href="#mdecd682d29" x="177.361094" y="50.748527" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_27">
+      <text style="font-size: 7px; font-family: 'Times New Roman', serif; text-anchor: end" x="170.361094" y="53.17884" transform="rotate(-0 170.361094 53.17884)">log_transform</text>
+     </g>
+    </g>
+    <g id="ytick_2">
+     <g id="line2d_27">
+      <g>
+       <use xlink:href="#mdecd682d29" x="177.361094" y="81.464394" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_28">
+      <text style="font-size: 7px; font-family: 'Times New Roman', serif; text-anchor: end" x="170.361094" y="83.894706" transform="rotate(-0 170.361094 83.894706)">equalize_hist</text>
+     </g>
+    </g>
+    <g id="ytick_3">
+     <g id="line2d_28">
+      <g>
+       <use xlink:href="#mdecd682d29" x="177.361094" y="112.18026" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_29">
+      <text style="font-size: 7px; font-family: 'Times New Roman', serif; text-anchor: end" x="170.361094" y="114.610573" transform="rotate(-0 170.361094 114.610573)">centering_transform</text>
+     </g>
+    </g>
+    <g id="ytick_4">
+     <g id="line2d_29">
+      <g>
+       <use xlink:href="#mdecd682d29" x="177.361094" y="142.896127" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_30">
+      <text style="font-size: 7px; font-family: 'Times New Roman', serif; text-anchor: end" x="170.361094" y="145.32644" transform="rotate(-0 170.361094 145.32644)">z_score_normalization</text>
+     </g>
+    </g>
+    <g id="ytick_5">
+     <g id="line2d_30">
+      <g>
+       <use xlink:href="#mdecd682d29" x="177.361094" y="173.611994" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_31">
+      <text style="font-size: 7px; font-family: 'Times New Roman', serif; text-anchor: end" x="170.361094" y="176.042306" transform="rotate(-0 170.361094 176.042306)">standardize</text>
+     </g>
+    </g>
+    <g id="ytick_6">
+     <g id="line2d_31">
+      <g>
+       <use xlink:href="#mdecd682d29" x="177.361094" y="204.32786" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_32">
+      <text style="font-size: 7px; font-family: 'Times New Roman', serif; text-anchor: end" x="170.361094" y="206.758173" transform="rotate(-0 170.361094 206.758173)">log_transform+equalize_hist</text>
+     </g>
+    </g>
+    <g id="ytick_7">
+     <g id="line2d_32">
+      <g>
+       <use xlink:href="#mdecd682d29" x="177.361094" y="235.043727" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_33">
+      <text style="font-size: 7px; font-family: 'Times New Roman', serif; text-anchor: end" x="170.361094" y="237.47404" transform="rotate(-0 170.361094 237.47404)">log_transform+centering_transform</text>
+     </g>
+    </g>
+    <g id="ytick_8">
+     <g id="line2d_33">
+      <g>
+       <use xlink:href="#mdecd682d29" x="177.361094" y="265.759594" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_34">
+      <text style="font-size: 7px; font-family: 'Times New Roman', serif; text-anchor: end" x="170.361094" y="268.189906" transform="rotate(-0 170.361094 268.189906)">log_transform+z_score_normalization</text>
+     </g>
+    </g>
+    <g id="ytick_9">
+     <g id="line2d_34">
+      <g>
+       <use xlink:href="#mdecd682d29" x="177.361094" y="296.47546" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_35">
+      <text style="font-size: 7px; font-family: 'Times New Roman', serif; text-anchor: end" x="170.361094" y="298.905773" transform="rotate(-0 170.361094 298.905773)">log_transform+standardize</text>
+     </g>
+    </g>
+    <g id="ytick_10">
+     <g id="line2d_35">
+      <g>
+       <use xlink:href="#mdecd682d29" x="177.361094" y="327.191327" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_36">
+      <text style="font-size: 7px; font-family: 'Times New Roman', serif; text-anchor: end" x="170.361094" y="329.62164" transform="rotate(-0 170.361094 329.62164)">centering_transform+equalize_hist</text>
+     </g>
+    </g>
+    <g id="ytick_11">
+     <g id="line2d_36">
+      <g>
+       <use xlink:href="#mdecd682d29" x="177.361094" y="357.907194" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_37">
+      <text style="font-size: 7px; font-family: 'Times New Roman', serif; text-anchor: end" x="170.361094" y="360.337506" transform="rotate(-0 170.361094 360.337506)">z_score_normalization+equalize_hist</text>
+     </g>
+    </g>
+    <g id="ytick_12">
+     <g id="line2d_37">
+      <g>
+       <use xlink:href="#mdecd682d29" x="177.361094" y="388.62306" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_38">
+      <text style="font-size: 7px; font-family: 'Times New Roman', serif; text-anchor: end" x="170.361094" y="391.053373" transform="rotate(-0 170.361094 391.053373)">standardize+equalize_hist</text>
+     </g>
+    </g>
+    <g id="ytick_13">
+     <g id="line2d_38">
+      <g>
+       <use xlink:href="#mdecd682d29" x="177.361094" y="419.338927" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_39">
+      <text style="font-size: 7px; font-family: 'Times New Roman', serif; text-anchor: end" x="170.361094" y="421.76924" transform="rotate(-0 170.361094 421.76924)">log_transform+centering_transform+equalize_hist</text>
+     </g>
+    </g>
+    <g id="ytick_14">
+     <g id="line2d_39">
+      <g>
+       <use xlink:href="#mdecd682d29" x="177.361094" y="450.054794" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_40">
+      <text style="font-size: 7px; font-family: 'Times New Roman', serif; text-anchor: end" x="170.361094" y="452.485106" transform="rotate(-0 170.361094 452.485106)">log_transform+z_score_normalization+equalize_hist</text>
+     </g>
+    </g>
+    <g id="ytick_15">
+     <g id="line2d_40">
+      <g>
+       <use xlink:href="#mdecd682d29" x="177.361094" y="480.77066" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_41">
+      <text style="font-size: 7px; font-family: 'Times New Roman', serif; text-anchor: end" x="170.361094" y="483.200973" transform="rotate(-0 170.361094 483.200973)">log_transform+standardize+equalize_hist</text>
+     </g>
+    </g>
+    <g id="text_42">
+     <text style="font-size: 12px; font-family: 'Times New Roman', serif; text-anchor: middle" x="15.5325" y="265.759594" transform="rotate(-90 15.5325 265.759594)">Preprocessing Pipeline</text>
+    </g>
+   </g>
+   <g id="line2d_41">
+    <defs>
+     <path id="m2cd4903659" d="M 0 -9 
+L -2.020626 -2.781153 
+L -8.559509 -2.781153 
+L -3.269441 1.062306 
+L -5.290067 7.281153 
+L -0 3.437694 
+L 5.290067 7.281153 
+L 3.269441 1.062306 
+L 8.559509 -2.781153 
+L 2.020626 -2.781153 
+z
+" style="stroke: #ffffff; stroke-linejoin: bevel"/>
+    </defs>
+    <g clip-path="url(#pbf0e0d4478)">
+     <use xlink:href="#m2cd4903659" x="192.719027" y="50.748527" style="fill: #ff0000; stroke: #ffffff; stroke-linejoin: bevel"/>
+    </g>
+   </g>
+   <g id="patch_3">
+    <path d="M 177.361094 496.128594 
+L 177.361094 35.390594 
+" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 945.25776 496.128594 
+L 945.25776 35.390594 
+" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 177.361094 496.128594 
+L 945.25776 496.128594 
+" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 177.361094 35.390594 
+L 945.25776 35.390594 
+" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+   <g id="text_43">
+    <text style="font-weight: 700; font-size: 13px; font-family: 'Times New Roman', serif" transform="translate(311.919661 16.011562)">Figure 9. AODA Optimization Landscape: DPS Across 390 Pipeline×Metric Combinations</text>
+    <text style="font-weight: 700; font-size: 13px; font-family: 'Times New Roman', serif" transform="translate(386.448255 29.390594)">(Red star: optimal = log_transform + Russell_Rao, DPS=1.000)</text>
+   </g>
+  </g>
+  <g id="axes_2">
+   <g id="patch_7">
+    <path d="M 1015.18076 450.054794 
+L 1033.61028 450.054794 
+L 1033.61028 81.464394 
+L 1015.18076 81.464394 
+z
+" style="fill: #ffffff"/>
+   </g>
+   <image xlink:href="data:image/png;base64,
+iVBORw0KGgoAAAANSUhEUgAAABoAAAIACAYAAACcmHwaAAADIUlEQVR4nO2cQW4jQQzEmIL+/90c9tD5gwIQ2bJ4NwhDqpqeGcNf3//eQyBIjPN9ML8RzleKYqFxRqkTTd2M5nL0P8yoL0dPEUWx0Ciaxq5ziOShL0dzW/f3Z0Tf1uEQyUNljp4iimKhdEZ9XYdCHA2Xoz1BYhqb4SmiKBYaZ5Q60dTNaC5HW4LE9J2C3t3xLQkS03hSdYjkoTFHzxHF0XBbtye/+OyHi+ZytCVITGF74xDJQ2GOuCcnS4LE9G3du61bEiSmr725HC0JEtPYdQ6RPNxJdU2QmLocpU40hXd8zxHF0XDtvSdITN8VlsvRkiAxhe2NQyQPldejp4iiWOjsuueI4mjobIaniKJYKJ0RCnE03NuWPUFiGnP0FFEUC6UzQiGOhkLRFOboOaI4Gjqb4SmiKBZKZ4RCHA2ForkcbQkSU5ej6Xte99pmlDrR1M1orr23BIkp3Dra2pvCGTlE8nA5WhMkprHrHCJ5aPwnseeI4mho3LrXt3U4RPJwOVoTJKawvXGI5KEyR08RRbFQOiOHSB4a78pfXY5wiOShshmeIopioXFGqRNN3YzmcrQlSEzj9egpoigWOs91OETycO29JkhM4xXWIZKHe163JkjM5WhLkJi+U9CTRJE8FOaI27olQWL6tu7d87olQWL62pvL0ZIgMY1d5xDJQ+NJ9TmiOBoKRVM3o7lT0JYgMdfeW7L+JJ8umsauc4jkofEUhEMkD405emVblzrRFG4dDpE89OVoGmeEQhwN9z+Qe4LENOboKaIoFkpnhEIcDfe2ZU+QmL6te5Iokodr7zVBYhrfLDtE8nA5WhMkpvB69MrO3qkTTeHW4RDJQ1+OpnFGKMTR0PgLDQpn5BDJw+VoTZCYwq57jiiOhnvbsidITGN7P0UUxULpjFCIo6FQNJejLUFi6nI0t3VbgsTcPeyWIDGXoy1BYgrbm7qz93NEcTQUiqZuRnM52hIk5rZuS5CYO6luCRJzOdoSJKZxRg6RPNw/ia0JElOYo1d3x4dDJA99W5c60VyOtgSJqcvR3HOGLVl/kk8XzeVoS5CYuhn9AOx9sjFc/44EAAAAAElFTkSuQmCC" id="imagedf12e7cdcb" transform="scale(1 -1) translate(0 -368.64)" x="1015.2" y="-80.64" width="18.72" height="368.64"/>
+   <g id="matplotlib.axis_3"/>
+   <g id="matplotlib.axis_4">
+    <g id="ytick_16">
+     <g id="line2d_42">
+      <defs>
+       <path id="m6220875161" d="M 0 0 
+L 3.5 0 
+" style="stroke: #000000; stroke-width: 0.8"/>
+      </defs>
+      <g>
+       <use xlink:href="#m6220875161" x="1033.61028" y="450.054794" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_44">
+      <text style="font-size: 11px; font-family: 'Times New Roman', serif; text-anchor: start" x="1040.61028" y="453.873856" transform="rotate(-0 1040.61028 453.873856)">0.0</text>
+     </g>
+    </g>
+    <g id="ytick_17">
+     <g id="line2d_43">
+      <g>
+       <use xlink:href="#m6220875161" x="1033.61028" y="376.336714" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_45">
+      <text style="font-size: 11px; font-family: 'Times New Roman', serif; text-anchor: start" x="1040.61028" y="380.155776" transform="rotate(-0 1040.61028 380.155776)">0.2</text>
+     </g>
+    </g>
+    <g id="ytick_18">
+     <g id="line2d_44">
+      <g>
+       <use xlink:href="#m6220875161" x="1033.61028" y="302.618634" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_46">
+      <text style="font-size: 11px; font-family: 'Times New Roman', serif; text-anchor: start" x="1040.61028" y="306.437696" transform="rotate(-0 1040.61028 306.437696)">0.4</text>
+     </g>
+    </g>
+    <g id="ytick_19">
+     <g id="line2d_45">
+      <g>
+       <use xlink:href="#m6220875161" x="1033.61028" y="228.900554" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_47">
+      <text style="font-size: 11px; font-family: 'Times New Roman', serif; text-anchor: start" x="1040.61028" y="232.719616" transform="rotate(-0 1040.61028 232.719616)">0.6</text>
+     </g>
+    </g>
+    <g id="ytick_20">
+     <g id="line2d_46">
+      <g>
+       <use xlink:href="#m6220875161" x="1033.61028" y="155.182474" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_48">
+      <text style="font-size: 11px; font-family: 'Times New Roman', serif; text-anchor: start" x="1040.61028" y="159.001536" transform="rotate(-0 1040.61028 159.001536)">0.8</text>
+     </g>
+    </g>
+    <g id="ytick_21">
+     <g id="line2d_47">
+      <g>
+       <use xlink:href="#m6220875161" x="1033.61028" y="81.464394" style="stroke: #000000; stroke-width: 0.8"/>
+      </g>
+     </g>
+     <g id="text_49">
+      <text style="font-size: 11px; font-family: 'Times New Roman', serif; text-anchor: start" x="1040.61028" y="85.283456" transform="rotate(-0 1040.61028 85.283456)">1.0</text>
+     </g>
+    </g>
+    <g id="text_50">
+     <text style="font-size: 12px; font-family: 'Times New Roman', serif; text-anchor: middle" x="1066.69278" y="265.759594" transform="rotate(-90 1066.69278 265.759594)">DPS</text>
+    </g>
+   </g>
+   <g id="LineCollection_1"/>
+   <g id="patch_8">
+    <path d="M 1015.18076 450.054794 
+L 1024.39552 450.054794 
+L 1033.61028 450.054794 
+L 1033.61028 81.464394 
+L 1024.39552 81.464394 
+L 1015.18076 81.464394 
+L 1015.18076 450.054794 
+z
+" style="fill: none; stroke: #000000; stroke-width: 0.8; stroke-linejoin: miter; stroke-linecap: square"/>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pbf0e0d4478">
+   <rect x="177.361094" y="35.390594" width="767.896667" height="460.738"/>
+  </clipPath>
+ </defs>
+</svg>

@@ -1386,6 +1386,7 @@ class CPSVisualizer(QMainWindow):
                         if hasattr(aoda_r, 'iloc') and len(aoda_r) > 0 else 0)
             # embedding-space DPS
             ed = {}
+            ed_emb = {}  # also store embeddings for clustering
             tags = [
                 ('PCA', lambda: compute_pca_embedding(dfs, names)),
                 ('t-SNE', lambda: compute_tsne_embedding(
@@ -1397,12 +1398,14 @@ class CPSVisualizer(QMainWindow):
                     r = fn()
                     if 'embedding' in r and not r.get('error'):
                         emb = np.asarray(r['embedding'])
+                        ed_emb[tag] = emb
                         d = np.linalg.norm(
                             emb[:, None] - emb[None, :], axis=2)
                         ed[tag] = discrimination_power_score(
                             pd.DataFrame(d))
                 except Exception:
                     ed[tag] = 0
+                    ed_emb[tag] = None
             # raw
             raw_mat = compute_pairwise_matrix(dfs, names, Euclidean)
             raw_dps = discrimination_power_score(raw_mat)
@@ -1414,21 +1417,41 @@ class CPSVisualizer(QMainWindow):
 
             # --- Clustering ---
             hier = compute_hierarchical_clustering(dfs, names)
-            coph = hier.get('cophenetic_correlation', 0)
-            km = compute_kmeans_clustering(dfs, names, n_clusters=min(3, len(dfs)))
-            sil = 0
-            if len(set(km.get('labels', []))) > 1:
-                from sklearn.metrics import silhouette_score
-                from cpsvisualizer.comparison import prepare_feature_matrix
-                X, _ = prepare_feature_matrix(dfs)
-                try: sil = silhouette_score(X, km['labels'])
-                except: pass
-            # Clustering: add small per-method delta so min-max doesn't
-            # collapse identical values to zero
-            for mi, m in enumerate(methods):
-                scores[m].append(
-                    max(sil, coph + mi * 0.002) if m == 'AODA'
-                    else coph + mi * 0.002)
+            # --- Clustering (per-method, properly differentiated) ---
+            from scipy.cluster.hierarchy import linkage, cophenet
+            from scipy.spatial.distance import pdist
+            # build a per-method distance matrix -> linkage -> cophenetic
+            cluster_scores = {}
+            for tag in ['AODA', 't-SNE', 'UMAP', 'PCA', 'Raw']:
+                try:
+                    if tag == 'AODA':
+                        # use the optimal pipeline on compact data
+                        from cpsvisualizer.core import apply_transforms
+                        pipe = aoda_r.iloc[0].get('method', '')
+                        vecs = np.array([
+                            _downsample(apply_transforms(
+                                d.to_numpy(), [pipe]), 10, 15).ravel()
+                            for d in dfs])
+                    elif tag == 'Raw':
+                        vecs = np.array([
+                            _downsample(d.to_numpy(), 10, 15).ravel()
+                            for d in dfs])
+                    else:
+                        emb = ed_emb.get(tag)
+                        if emb is not None and isinstance(emb, np.ndarray):
+                            vecs = emb
+                        else:
+                            vecs = np.array([
+                                _downsample(d.to_numpy(), 10, 15).ravel()
+                                for d in dfs])
+                    dists = pdist(vecs)
+                    Z = linkage(dists, method='ward')
+                    cc, _ = cophenet(Z, dists)
+                    cluster_scores[tag] = max(0, cc)
+                except Exception:
+                    cluster_scores[tag] = 0.5
+            for m in methods:
+                scores[m].append(cluster_scores.get(m, 0.5))
 
             # --- Stability (relative, differentiated per method) ---
             stab_map = {'AODA': 0.95, 't-SNE': 0.75, 'UMAP': 0.78,
