@@ -536,8 +536,11 @@ class CPSVisualizer(QMainWindow):
     def _build_stats_pane(self, parent):
         sc, inner = self._scroll_pane()
         v = QVBoxLayout(inner)
-        self._pca_canvas = FigureCanvas(Figure(figsize=(6, 4), dpi=self.dpi))
-        self._corr_canvas = FigureCanvas(Figure(figsize=(6, 4), dpi=self.dpi))
+        self._pca_canvas = FigureCanvas(Figure(figsize=(6, 6), dpi=self.dpi))
+        self._corr_canvas = FigureCanvas(Figure(figsize=(6, 6), dpi=self.dpi))
+        for c in (self._pca_canvas, self._corr_canvas):
+            c.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+            c.setMinimumHeight(350)
         v.addWidget(self._pca_canvas)
         v.addWidget(self._corr_canvas)
         v.addStretch(1)
@@ -545,33 +548,12 @@ class CPSVisualizer(QMainWindow):
 
     def _build_comparison_pane(self, parent):
         sc, inner = self._scroll_pane()
-        grid = QGridLayout(inner)
-        grid.setSpacing(8)
-
-        self._dendro_canvas = FigureCanvas(Figure(figsize=(10, 4), dpi=self.dpi))
-        self._cmp_pca_canvas = FigureCanvas(Figure(figsize=(5, 5), dpi=self.dpi))
-        self._cmp_tsne_canvas = FigureCanvas(Figure(figsize=(5, 5), dpi=self.dpi))
-        self._cmp_umap_canvas = FigureCanvas(Figure(figsize=(5, 5), dpi=self.dpi))
-        self._kmeans_canvas = FigureCanvas(Figure(figsize=(5, 5), dpi=self.dpi))
-
-        self._dendro_canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self._dendro_canvas.setMaximumHeight(360)
-        for c in (self._cmp_pca_canvas, self._cmp_tsne_canvas,
-                  self._cmp_umap_canvas, self._kmeans_canvas):
-            c.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-            c.setMinimumHeight(260)
-
-        grid.addWidget(self._dendro_canvas, 0, 0, 1, 2)
-        grid.addWidget(self._cmp_pca_canvas, 1, 0)
-        grid.addWidget(self._cmp_tsne_canvas, 1, 1)
-        grid.addWidget(self._cmp_umap_canvas, 2, 0)
-        grid.addWidget(self._kmeans_canvas, 2, 1)
-
-        for col in range(2):
-            grid.setColumnStretch(col, 1)
-        grid.setRowStretch(0, 0)
-        grid.setRowStretch(1, 1)
-        grid.setRowStretch(2, 1)
+        v = QVBoxLayout(inner)
+        self._cmp_canvas = FigureCanvas(Figure(figsize=(12, 8), dpi=self.dpi))
+        self._cmp_canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self._cmp_canvas.setMinimumHeight(600)
+        v.addWidget(self._cmp_canvas)
+        v.addStretch(1)
         parent.addTab(sc, 'Comparison')
 
     def _build_quality_pane(self, parent):
@@ -658,14 +640,11 @@ class CPSVisualizer(QMainWindow):
     def _all_figs(self):
         return [self._map_fig, self._dist_canvas.figure,
                 self._pca_canvas.figure, self._corr_canvas.figure,
-                self._cmp_pca_canvas.figure, self._cmp_tsne_canvas.figure,
-                self._cmp_umap_canvas.figure, self._dendro_canvas.figure,
-                self._kmeans_canvas.figure, self._quality_canvas.figure]
+                self._cmp_canvas.figure, self._quality_canvas.figure]
 
     def _redraw_all(self):
         for c in (self._map_canvas, self._dist_canvas, self._pca_canvas,
-                  self._corr_canvas, self._cmp_pca_canvas, self._cmp_tsne_canvas,
-                  self._cmp_umap_canvas, self._dendro_canvas, self._kmeans_canvas,
+                  self._corr_canvas, self._cmp_canvas,
                   self._quality_canvas):
             c.draw()
 
@@ -1052,6 +1031,8 @@ class CPSVisualizer(QMainWindow):
             ax.set_ylabel(f'PC2 ({ev[1]*100:.1f}%)' if len(ev) > 1 else 'PC2')
             ax.set_title('PCA: Element Distribution Patterns')
             ax.grid(True, alpha=0.3, linestyle='--')
+            ax.set_aspect('equal', adjustable='box')
+            _equal_lims(ax, coords[:, 0], coords[:, 1])
         except Exception as e:
             ax = fig.add_subplot(111)
             ax.text(0.5, 0.5, f'PCA error: {e}', ha='center', va='center')
@@ -1078,10 +1059,20 @@ class CPSVisualizer(QMainWindow):
         self._corr_canvas.draw()
 
     def _render_comparison(self, dfs, names):
-        def draw(fig, canvas, fn, title):
-            fig.clear()
-            fig.patch.set_facecolor(FIG_BG)
-            ax = fig.add_subplot(111)
+        from matplotlib.gridspec import GridSpec
+        fig = self._cmp_canvas.figure
+        fig.clear()
+        fig.patch.set_facecolor(FIG_BG)
+        # 5 square subplots: top row 3, bottom row 2 (centred)
+        # Use a 2x6 grid; top row uses cols 0-1, 2-3, 4-5; bottom row
+        # uses cols 1-2, 3-4 (offset by 1 to centre).
+        gs = GridSpec(2, 6, figure=fig,
+                      width_ratios=[1, 1, 1, 1, 1, 1],
+                      wspace=0.35, hspace=0.35,
+                      left=0.05, right=0.98, top=0.95, bottom=0.07)
+
+        def _draw_scatter(ax, fn, title):
+            ax.set_facecolor(FIG_BG)
             try:
                 r = fn()
                 if isinstance(r, dict) and r.get('error'):
@@ -1093,72 +1084,77 @@ class CPSVisualizer(QMainWindow):
                                    edgecolors='k', linewidths=0.5)
                         for i, n in enumerate(names):
                             ax.annotate(n, (emb[i, 0], emb[i, 1]),
-                                        textcoords="offset points", xytext=(4, 4), fontsize=9)
+                                        textcoords="offset points",
+                                        xytext=(4, 4), fontsize=8)
                         ax.set_aspect('equal', adjustable='box')
                         _equal_lims(ax, emb[:, 0], emb[:, 1])
-                    ax.set_title(title)
-                    ax.grid(True, alpha=0.3, linestyle='--')
-                else:
-                    ax.set_title(title)
+                ax.set_title(title, fontsize=10)
+                ax.grid(True, alpha=0.3, linestyle='--')
             except Exception as e:
                 ax.text(0.5, 0.5, str(e), ha='center', va='center')
-            fig.tight_layout()
-            canvas.draw()
 
-        draw(self._cmp_pca_canvas.figure, self._cmp_pca_canvas,
-             lambda: compute_pca_embedding(dfs, names), 'PCA')
-        draw(self._cmp_tsne_canvas.figure, self._cmp_tsne_canvas,
-             lambda: compute_tsne_embedding(dfs, names, perplexity=min(5, len(dfs) - 1)),
-             't-SNE')
-        draw(self._cmp_umap_canvas.figure, self._cmp_umap_canvas,
-             lambda: compute_umap_embedding(dfs, names), 'UMAP')
+        # top row: PCA (cols 0-1), t-SNE (cols 2-3), UMAP (cols 4-5)
+        ax_pca = fig.add_subplot(gs[0, 0:2])
+        ax_tsne = fig.add_subplot(gs[0, 2:4])
+        ax_umap = fig.add_subplot(gs[0, 4:6])
+        # bottom row: Dendrogram (cols 1-2), K-Means (cols 3-4) — centred
+        ax_dendro = fig.add_subplot(gs[1, 1:3])
+        ax_kmeans = fig.add_subplot(gs[1, 3:5])
+
+        for ax in (ax_pca, ax_tsne, ax_umap, ax_dendro, ax_kmeans):
+            ax.set_facecolor(FIG_BG)
+
+        _draw_scatter(ax_pca,
+                      lambda: compute_pca_embedding(dfs, names), 'PCA')
+        _draw_scatter(ax_tsne,
+                      lambda: compute_tsne_embedding(
+                          dfs, names, perplexity=min(5, len(dfs) - 1)),
+                      't-SNE')
+        _draw_scatter(ax_umap,
+                      lambda: compute_umap_embedding(dfs, names), 'UMAP')
 
         # dendrogram
-        fig = self._dendro_canvas.figure
-        fig.clear()
-        fig.patch.set_facecolor(FIG_BG)
-        ax = fig.add_subplot(111)
         try:
             from scipy.cluster.hierarchy import dendrogram
             hier = compute_hierarchical_clustering(dfs, names)
             if hier.get('linkage') is not None:
-                dendrogram(hier['linkage'], labels=names, ax=ax,
-                           leaf_rotation=45, leaf_font_size=10)
-                ax.set_title(f"Dendrogram (cophenetic r={hier['cophenetic_correlation']:.3f})")
+                dendrogram(hier['linkage'], labels=names, ax=ax_dendro,
+                           leaf_rotation=45, leaf_font_size=8)
+                ax_dendro.set_title(
+                    f"Dendrogram (r={hier['cophenetic_correlation']:.3f})",
+                    fontsize=10)
             else:
-                ax.text(0.5, 0.5, 'Need ≥2 samples', ha='center', va='center')
+                ax_dendro.text(0.5, 0.5, 'Need >=2 samples',
+                               ha='center', va='center')
         except Exception as e:
-            ax.text(0.5, 0.5, str(e), ha='center', va='center')
-        fig.tight_layout()
-        self._dendro_canvas.draw()
+            ax_dendro.text(0.5, 0.5, str(e), ha='center', va='center')
 
-        # kmeans
-        fig = self._kmeans_canvas.figure
-        fig.clear()
-        fig.patch.set_facecolor(FIG_BG)
-        ax = fig.add_subplot(111)
+        # k-means
         try:
-            km = compute_kmeans_clustering(dfs, names, n_clusters=min(3, len(dfs)))
-            pca = compute_pca_embedding(dfs, names)['embedding']
+            km = compute_kmeans_clustering(dfs, names,
+                                            n_clusters=min(3, len(dfs)))
+            pca_emb = compute_pca_embedding(dfs, names)['embedding']
             colors = ['#4060d8', '#ed7d31', '#1a9e5c', '#c78a0a', '#d64545']
             for k in set(km['labels']):
                 mask = np.array(km['labels']) == k
-                ax.scatter(pca[mask, 0], pca[mask, 1], s=80,
-                           c=colors[k % len(colors)], label=f'Cluster {k + 1}',
-                           edgecolors='k', linewidths=0.5)
+                ax_kmeans.scatter(pca_emb[mask, 0], pca_emb[mask, 1], s=80,
+                                  c=colors[k % len(colors)],
+                                  label=f'Cluster {k + 1}',
+                                  edgecolors='k', linewidths=0.5)
                 for i, n in enumerate(names):
                     if mask[i]:
-                        ax.annotate(n, (pca[i, 0], pca[i, 1]),
-                                    textcoords="offset points", xytext=(4, 4), fontsize=9)
-            ax.legend()
-            ax.set_title(f"K-Means (k={km['n_clusters']})")
-            ax.set_aspect('equal', adjustable='box')
-            _equal_lims(ax, pca[:, 0], pca[:, 1])
-            ax.grid(True, alpha=0.3, linestyle='--')
+                        ax_kmeans.annotate(n, (pca_emb[i, 0], pca_emb[i, 1]),
+                                           textcoords="offset points",
+                                           xytext=(4, 4), fontsize=8)
+            ax_kmeans.legend(fontsize=7)
+            ax_kmeans.set_title(f"K-Means (k={km['n_clusters']})", fontsize=10)
+            ax_kmeans.set_aspect('equal', adjustable='box')
+            _equal_lims(ax_kmeans, pca_emb[:, 0], pca_emb[:, 1])
+            ax_kmeans.grid(True, alpha=0.3, linestyle='--')
         except Exception as e:
-            ax.text(0.5, 0.5, str(e), ha='center', va='center')
-        fig.tight_layout()
-        self._kmeans_canvas.draw()
+            ax_kmeans.text(0.5, 0.5, str(e), ha='center', va='center')
+
+        self._cmp_canvas.draw()
 
     def _render_quality(self, dfs, names):
         fig = self._quality_canvas.figure

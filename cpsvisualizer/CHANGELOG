@@ -1,4 +1,13 @@
 # CPS-Visualizer Release Notes
+## 1.2.9 (8 Aug 2026)
+
+### Improvements
+* Statistics pane: two square plots (PCA scatter + correlation matrix),
+  both with equal aspect for true square shape
+* Comparison pane: single figure with 5 square subplots in a 3-top /
+  2-bottom centred layout (PCA, t-SNE, UMAP on top row; Dendrogram
+  and K-Means on bottom row, centred)
+
 ## 1.2.8 (8 Aug 2026)
 
 ### Fixes
