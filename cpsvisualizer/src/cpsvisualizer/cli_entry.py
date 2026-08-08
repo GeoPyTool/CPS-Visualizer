@@ -21,6 +21,7 @@ Usage:
   cpsv [DATA_FILES] [FUNCTIONS] [MODE]      Run the batch CLI (default).
   cpsv gui                                  Launch the desktop GUI.
   cpsv web [--host HOST] [--port PORT]      Launch the web interface.
+  cpsv export [DATASETS] [--types ...]     Export figures & tables.
 
 CLI arguments:
   DATA_FILES    space-separated list of CSV/XLSX data files (one quoted arg)
@@ -35,6 +36,8 @@ Examples:
   cpsv "Ag.csv Cu.csv" "log_transform equalize_hist Euclidean" silent
   cpsv gui
   cpsv web --port 6789
+  cpsv export all
+  cpsv export geology --types maps,distance
 """
 
 
@@ -86,6 +89,9 @@ def main(argv=None):
         host, port = _parse_web_args(argv[1:])
         from cpsvisualizer.web import main as web_main
         return web_main(host=host, port=port)
+    if cmd == 'export':
+        from cpsvisualizer.export import main as export_main
+        return export_main(argv[1:])
     if cmd in ('cli',):
         argv = argv[1:]
 
