@@ -689,227 +689,177 @@ class CPSVisualizer(QMainWindow):
         bar = QHBoxLayout()
         self._fus_picks = []
         self._fus_color_btns = []
-        default_colors = ['#FF3030', '#30CC30', '#3080FF']
-        for i, (lbl, dc) in enumerate(zip(['A:', 'B:', 'C:'], default_colors)):
+        for i, (lbl, dc) in enumerate(zip(['A:','B:','C:'], ['#FF3030','#30CC30','#3080FF'])):
             bar.addWidget(QLabel(lbl))
-            pb = QComboBox()
-            pb.currentTextChanged.connect(self._on_fusion_change)
-            bar.addWidget(pb)
-            self._fus_picks.append(pb)
-            cb = QPushButton(' ')
-            cb.setFixedSize(24, 24)
-            cb.setStyleSheet(f'background-color: {dc}; border:1px solid #888;')
-            idx = i
-            cb.clicked.connect(lambda checked, n=idx: self._pick_fusion_color(n))
-            bar.addWidget(cb)
-            self._fus_color_btns.append(cb)
+            pb = QComboBox(); pb.currentTextChanged.connect(self._on_fusion_change)
+            bar.addWidget(pb); self._fus_picks.append(pb)
+            cb = QPushButton(' '); cb.setFixedSize(24,24)
+            cb.setStyleSheet(f'background-color:{dc};border:1px solid #888;')
+            idx=i; cb.clicked.connect(lambda checked,n=idx:self._pick_fusion_color(n))
+            bar.addWidget(cb); self._fus_color_btns.append(cb)
         bar.addWidget(QLabel('Res:'))
-        self._fus_res = QComboBox()
-        self._fus_res.addItems(['1x', '2x', '4x'])
+        self._fus_res=QComboBox(); self._fus_res.addItems(['1x','2x','4x'])
         self._fus_res.currentTextChanged.connect(self._on_fusion_change)
-        bar.addWidget(self._fus_res)
-        bar.addWidget(QLabel('\u03b1:'))
-        self._fus_alpha = QSlider(Qt.Horizontal)
-        self._fus_alpha.setRange(0, 100)
-        self._fus_alpha.setValue(50)
-        self._fus_alpha.valueChanged.connect(self._on_fusion_change)
-        bar.addWidget(self._fus_alpha)
-        self._fus_alpha_label = QLabel('0.50')
-        self._fus_alpha.valueChanged.connect(
-            lambda v: self._fus_alpha_label.setText(f'{v/100:.2f}'))
-        bar.addWidget(self._fus_alpha_label)
-        bar.addStretch(1)
+        bar.addWidget(self._fus_res); bar.addStretch(1)
         v.addLayout(bar)
-        self._fus_canvas = FigureCanvas(Figure(figsize=(20, 15), dpi=self.dpi))
-        _install_figure_export(self._fus_canvas, 'cps_fusion')
-        self._fus_canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self._fus_canvas = FigureCanvas(Figure(figsize=(20,15), dpi=self.dpi))
+        _install_figure_export(self._fus_canvas,'cps_fusion')
+        self._fus_canvas.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
         self._fus_canvas.setMinimumHeight(800)
         v.addWidget(self._fus_canvas)
         parent.addTab(sc, 'Fusion')
     def _pick_fusion_color(self, idx):
         from PySide6.QtWidgets import QColorDialog
-        btn = self._fus_color_btns[idx]
-        current = btn.palette().button().color()
-        color = QColorDialog.getColor(current, self, 'Pick line color')
+        btn=self._fus_color_btns[idx]
+        color=QColorDialog.getColor(btn.palette().button().color(),self,'Pick')
         if color.isValid():
-            btn.setStyleSheet(f'background-color: {color.name()}; border:1px solid #888;')
+            btn.setStyleSheet(f'background-color:{color.name()};border:1px solid #888;')
             self._on_fusion_change()
     def _on_fusion_change(self):
-        if self.df_name_list:
-            self._fill_fusion_picks()
-            self._render_fusion()
+        if self.df_name_list: self._fill_fusion_picks(); self._render_fusion()
     def _fill_fusion_picks(self):
         for p in self._fus_picks:
-            cur = p.currentText()
-            p.blockSignals(True); p.clear(); p.addItems(self.df_name_list)
+            cur=p.currentText(); p.blockSignals(True); p.clear()
+            p.addItems(self.df_name_list)
             if cur in self.df_name_list: p.setCurrentText(cur)
             p.blockSignals(False)
-        if len(self.df_name_list) >= 2 and not self._fus_picks[1].currentText():
+        if len(self.df_name_list)>=2 and not self._fus_picks[1].currentText():
             self._fus_picks[1].setCurrentIndex(1)
     def _render_fusion(self):
-        from cpsvisualizer.core import log_transform, equalize_hist
-        from scipy.ndimage import sobel, gaussian_filter, zoom
+        from cpsvisualizer.core import log_transform
+        from scipy.ndimage import sobel,gaussian_filter,zoom
         import re
-        zf = int(self._fus_res.currentText().replace('x', ''))
-        self._fus_colors = []
+        zf=int(self._fus_res.currentText().replace('x',''))
+        self._fus_colors=[]
         for btn in self._fus_color_btns:
-            m = re.search(r'#[0-9a-fA-F]{6}', btn.styleSheet())
+            m=re.search(r'#[0-9a-fA-F]{6}',btn.styleSheet())
             self._fus_colors.append(m.group() if m else '#FF3030')
-        self._fus_rows = []
+        self._fus_rows=[]
         for i in range(3):
-            nm = self._fus_picks[i].currentText()
+            nm=self._fus_picks[i].currentText()
             if not nm or nm not in self.df_name_list:
-                if i < 2: continue
+                if i<2: continue
                 else: break
-            data = self.df_list[self.df_name_list.index(nm)].to_numpy().copy()
-            raw = np.nan_to_num(data.astype(float), nan=0, posinf=0, neginf=0)
-            # middle column: max-contrast visual data + computed overlays
-            # log1p + percentile window spreads full value range evenly,
-            # then contours and trace are drawn on top
-            from cpsvisualizer.core import log_transform
-            V = log_transform(raw)
-            # keep raw01 for otsu contour extraction (needs original shape)
-            raw01 = (raw - raw.min()) / (raw.max() - raw.min() + 1e-10)
-            # Otsu contours on downsampled V, then convert to V-space coords
+            data=self.df_list[self.df_name_list.index(nm)].to_numpy().copy()
+            raw=np.nan_to_num(data.astype(float),nan=0,posinf=0,neginf=0)
+            # log-transform for contour extraction (better feature detection)
+            log_data=log_transform(raw)
             from skimage.filters import threshold_otsu
             from skimage.measure import find_contours
             from scipy.ndimage import gaussian_filter as gf
-            ds = _downsample(V, 80, 80)
-            thresh = threshold_otsu(ds)
-            binary = (ds > thresh).astype(np.float64)
-            binary_sm = gf(binary, sigma=1.5)
-            contours_ds = find_contours(binary_sm, level=0.5)
-            # convert to V-space coords (so zoom doesn't break them)
-            contours_v = []
+            ds=_downsample(log_data,80,80)
+            thresh=threshold_otsu(ds)
+            binary=(ds>thresh).astype(np.float64)
+            binary_sm=gf(binary,sigma=1.5)
+            contours_ds=find_contours(binary_sm,level=0.5)
+            contours_v=[]
+            V_shape=log_data.shape
             for cnt in contours_ds:
-                cx = cnt[:, 1] * (V.shape[1] / ds.shape[1])
-                cy = cnt[:, 0] * (V.shape[0] / ds.shape[0])
-                contours_v.append(np.column_stack([cx, cy]))
-            # structural edges
-            d2 = gaussian_filter(raw, sigma=1.0)
-            E = np.hypot(sobel(d2, axis=0), sobel(d2, axis=1))
-            E = (E - E.min()) / (E.max() - E.min() + 1e-10)
-            tx, ty, fd = self._compute_trajectory(data)
-            if zf > 1:
-                raw = zoom(raw, zf, order=3); V = zoom(V, zf, order=3)
-                E = zoom(E, zf, order=3)
-                # scale contours & trace to match zoomed V
-                for c in contours_v:
-                    c[:, 0] *= zf; c[:, 1] *= zf
-                tx *= zf; ty *= zf
-            self._fus_rows.append({
-                'name': nm, 'raw': raw, 'V': V, 'E': E,
-                'tx': tx, 'ty': ty, 'fd': fd,
-                'contours_v': contours_v,
-            })
+                cx=cnt[:,1]*(V_shape[1]/ds.shape[1])
+                cy=cnt[:,0]*(V_shape[0]/ds.shape[0])
+                contours_v.append(np.column_stack([cx,cy]))
+            d2=gaussian_filter(raw,sigma=1.0)
+            E=np.hypot(sobel(d2,axis=0),sobel(d2,axis=1))
+            E=(E-E.min())/(E.max()-E.min()+1e-10)
+            tx,ty,fd=self._compute_trajectory(data)
+            if zf>1:
+                raw=zoom(raw,zf,order=3); log_data=zoom(log_data,zf,order=3)
+                E=zoom(E,zf,order=3)
+                for c in contours_v: c[:,0]*=zf; c[:,1]*=zf
+                tx*=zf; ty*=zf
+            self._fus_rows.append({'name':nm,'raw':raw,'log':log_data,'V_shape':V_shape,
+                'E':E,'tx':tx,'ty':ty,'fd':fd,'contours_v':contours_v})
         self._render_fusion_display()
-    def _compute_trajectory(self, data):
-        d = np.nan_to_num(np.asarray(data, dtype=float), nan=0.0, posinf=0.0, neginf=0.0)
-        rows, cols = d.shape
-        col_weights = d.sum(axis=1)
-        valid = col_weights > 0
-        if valid.sum() < 3:
-            return np.array([]), np.array([]), 0.0
-        centroid_x = (d * np.arange(cols)).sum(axis=1)
-        centroid_x = np.divide(centroid_x, col_weights,
-                               out=np.full_like(centroid_x, cols/2),
-                               where=col_weights > 0)
-        centroid_y = np.arange(rows).astype(float)
-        window = max(3, int(rows * 0.05))
-        cx = np.convolve(centroid_x, np.ones(window)/window, mode='same')
-        cy = np.convolve(centroid_y, np.ones(window)/window, mode='same')
+    def _compute_trajectory(self,data):
+        d=np.nan_to_num(np.asarray(data,dtype=float),nan=0.0,posinf=0.0,neginf=0.0)
+        rows,cols=d.shape
+        col_weights=d.sum(axis=1); valid=col_weights>0
+        if valid.sum()<3: return np.array([]),np.array([]),0.0
+        centroid_x=(d*np.arange(cols)).sum(axis=1)
+        centroid_x=np.divide(centroid_x,col_weights,out=np.full_like(centroid_x,cols/2),where=col_weights>0)
+        centroid_y=np.arange(rows).astype(float)
+        window=max(3,int(rows*0.05))
+        cx=np.convolve(centroid_x,np.ones(window)/window,mode='same')
+        cy=np.convolve(centroid_y,np.ones(window)/window,mode='same')
         try:
-            thresh = d.mean() + d.std()
-            binary = (d > thresh).astype(np.uint8)
-            sizes = 2 ** np.arange(1, int(np.log2(min(rows, cols))) - 1)
-            counts = []
+            thresh=d.mean()+d.std(); binary=(d>thresh).astype(np.uint8)
+            sizes=2**np.arange(1,int(np.log2(min(rows,cols)))-1); counts=[]
             for s in sizes:
-                if s < 2: continue
-                nr = rows // s; nc = cols // s
-                if nr < 1 or nc < 1: continue
-                boxes = binary[:nr*s, :nc*s].reshape(nr, s, nc, s)
-                counts.append(np.sum(boxes.any(axis=(1, 3))))
-            if len(counts) > 3:
-                sizes_used = sizes[-len(counts):]
-                log_s = np.log(1.0 / sizes_used)
-                log_n = np.log(np.array(counts))
-                m, _ = np.polyfit(log_s, log_n, 1)
-                fdim = abs(round(m, 3))
-            else: fdim = 0.0
-        except Exception: fdim = 0.0
-        return cx, cy, fdim
-    def _render_fusion_display(self, _=None):
+                if s<2: continue
+                nr=rows//s; nc=cols//s
+                if nr<1 or nc<1: continue
+                boxes=binary[:nr*s,:nc*s].reshape(nr,s,nc,s)
+                counts.append(np.sum(boxes.any(axis=(1,3))))
+            if len(counts)>3:
+                sizes_used=sizes[-len(counts):]
+                m,_=np.polyfit(np.log(1.0/sizes_used),np.log(np.array(counts)),1)
+                fdim=abs(round(m,3))
+            else: fdim=0.0
+        except Exception: fdim=0.0
+        return cx,cy,fdim
+    def _render_fusion_display(self,_=None):
         if not self._fus_rows: return
-        fig = self._fus_canvas.figure
-        fig.clear(); fig.patch.set_facecolor(FIG_BG)
+        fig=self._fus_canvas.figure; fig.clear(); fig.patch.set_facecolor(FIG_BG)
         from matplotlib.gridspec import GridSpec
-        n_rows = len(self._fus_rows)
-        gs = GridSpec(n_rows, 4, figure=fig, wspace=0.06, hspace=0.22,
-                      left=0.03, right=0.99, top=0.94, bottom=0.04)
-        cols = ['Raw', 'Enhanced+Contour', 'Original+Trace']
-        colors = self._fus_colors
+        n_rows=len(self._fus_rows)
+        gs=GridSpec(n_rows,4,figure=fig,wspace=0.06,hspace=0.22,
+                     left=0.03,right=0.99,top=0.94,bottom=0.04)
+        cols=['Raw','Enhanced+Contour','Original+Trace']
         for row_i in range(n_rows):
-            r = self._fus_rows[row_i]
-            col = colors[row_i]
+            r=self._fus_rows[row_i]; col=self._fus_colors[row_i]
             for col_j in range(3):
-                ax = fig.add_subplot(gs[row_i, col_j])
-                ax.set_facecolor(FIG_BG)
-                if col_j == 0:
-                    s, lo, hi = display_scale(r['raw'], 1, 99)
-                    arr_disp = _downsample(s, 180, 180)
-                    ax.imshow(arr_disp, cmap=ink_colormap(), vmin=lo, vmax=hi,
-                              aspect='auto', interpolation='nearest')
-                elif col_j == 1:
-                    s, lo, hi = display_scale(r['V'], 0, 100)
-                    arr_disp = _downsample(s, 180, 180)
-                    ax.imshow(arr_disp, cmap=ink_colormap(), vmin=lo, vmax=hi,
-                              aspect='auto', interpolation='nearest')
-                    # contours in V-space, scale to arr_disp
-                    sx = arr_disp.shape[1] / r['V'].shape[1]
-                    sy = arr_disp.shape[0] / r['V'].shape[0]
+                ax=fig.add_subplot(gs[row_i,col_j]); ax.set_facecolor(FIG_BG)
+                if col_j==0:
+                    # Raw: standard display_scale
+                    s,lo,hi=display_scale(r['raw'],1,99)
+                    arr_disp=_downsample(s,180,180)
+                    ax.imshow(arr_disp,cmap=ink_colormap(),vmin=lo,vmax=hi,
+                              aspect='auto',interpolation='nearest')
+                elif col_j==1:
+                    # Enhanced+Contour: subdued bg + bold colored contours
+                    s,lo,hi=display_scale(r['log'],0,100)
+                    arr_disp=_downsample(s,180,180)
+                    ax.imshow(arr_disp,cmap=ink_colormap(),vmin=lo,vmax=hi,
+                              aspect='auto',interpolation='nearest',alpha=0.35)
+                    sx=arr_disp.shape[1]/r['V_shape'][1]
+                    sy=arr_disp.shape[0]/r['V_shape'][0]
                     for cnt in r['contours_v']:
-                        ax.plot(cnt[:, 0] * sx, cnt[:, 1] * sy,
-                                color=col, linewidth=0.5, alpha=0.85)
-                    if len(r['tx']) > 2:
-                        tx_s = r['tx'] * sx; ty_s = r['ty'] * sy
-                        ax.plot(tx_s, ty_s, color=col, linewidth=0.5, alpha=0.5)
+                        ax.plot(cnt[:,0]*sx,cnt[:,1]*sy,color=col,linewidth=1.2,alpha=0.95)
+                    if len(r['tx'])>2:
+                        ax.plot(r['tx']*sx,r['ty']*sy,color='#FFFFFF',linewidth=0.8,alpha=0.7)
                 else:
-                    s, lo, hi = display_scale(r['raw'], 1, 99)
-                    arr_disp = _downsample(s, 180, 180)
-                    ax.imshow(arr_disp, cmap=ink_colormap(), vmin=lo, vmax=hi,
-                              aspect='auto', interpolation='nearest')
-                    if len(r['tx']) > 2:
-                        sx = arr_disp.shape[1] / r['V'].shape[1]
-                        sy = arr_disp.shape[0] / r['V'].shape[0]
-                        ax.plot(r['tx']*sx, r['ty']*sy,
-                                color=col, linewidth=0.4, alpha=0.4)
-                ax.set_aspect(_square_aspect(*arr_disp.shape),
-                              adjustable='box', anchor='C')
-                ttl = f'{r["name"]}  {cols[col_j]}'
-                if col_j == 1 and r['fd']: ttl += f' (FD={r["fd"]:.3f})'
-                ax.set_title(ttl, fontsize=7)
-                ax.set_xticks([]); ax.set_yticks([])
-        # Overlay: lines-only comparison
-        ax_ov = fig.add_subplot(gs[:, 3])
-        ax_ov.set_facecolor('#111118')
-        max_h = max(r['V'].shape[0] for r in self._fus_rows)
-        max_w = max(r['V'].shape[1] for r in self._fus_rows)
-        ax_ov.set_xlim(0, max_w); ax_ov.set_ylim(max_h, 0)
-        for row_i, r in enumerate(self._fus_rows):
-            col = colors[row_i]
+                    # Original+Trace: standard data + bold colored trace
+                    s,lo,hi=display_scale(r['raw'],1,99)
+                    arr_disp=_downsample(s,180,180)
+                    ax.imshow(arr_disp,cmap=ink_colormap(),vmin=lo,vmax=hi,
+                              aspect='auto',interpolation='nearest')
+                    if len(r['tx'])>2:
+                        sx=arr_disp.shape[1]/r['V_shape'][1]
+                        sy=arr_disp.shape[0]/r['V_shape'][0]
+                        ax.plot(r['tx']*sx,r['ty']*sy,color=col,linewidth=1.0,alpha=0.85)
+                ax.set_aspect(_square_aspect(*arr_disp.shape),adjustable='box',anchor='C')
+                ttl=f'{r["name"]}  {cols[col_j]}'
+                if col_j==1 and r['fd']: ttl+=f' (FD={r["fd"]:.3f})'
+                ax.set_title(ttl,fontsize=7); ax.set_xticks([]); ax.set_yticks([])
+        # Overlay
+        ax_ov=fig.add_subplot(gs[:,3]); ax_ov.set_facecolor('#111118')
+        max_h=max(r['V_shape'][0] for r in self._fus_rows)
+        max_w=max(r['V_shape'][1] for r in self._fus_rows)
+        ax_ov.set_xlim(0,max_w); ax_ov.set_ylim(max_h,0)
+        for row_i,r in enumerate(self._fus_rows):
+            col=self._fus_colors[row_i]
             for cnt in r['contours_v']:
-                ax_ov.plot(cnt[:, 0], cnt[:, 1], color=col, linewidth=0.5, alpha=0.6)
-            if len(r['tx']) > 2:
-                ax_ov.plot(r['tx'], r['ty'], color=col, linewidth=1.0, alpha=0.85)
-        ax_ov.set_aspect(_square_aspect(max_h, max_w),
-                         adjustable='box', anchor='C')
-        fd_lines = [f'{r["name"]}: FD={r["fd"]:.3f}' for r in self._fus_rows]
-        ax_ov.text(0.02, 0.02, '\n'.join(fd_lines), transform=ax_ov.transAxes,
-                   fontsize=7, color='#AAAAAA', va='bottom', ha='left',
-                   bbox=dict(boxstyle='round,pad=0.3', facecolor='#111118', alpha=0.7))
+                ax_ov.plot(cnt[:,0],cnt[:,1],color=col,linewidth=0.6,alpha=0.7)
+            if len(r['tx'])>2:
+                ax_ov.plot(r['tx'],r['ty'],color=col,linewidth=1.2,alpha=0.9)
+        ax_ov.set_aspect(_square_aspect(max_h,max_w),adjustable='box',anchor='C')
+        fd_lines=[f'{r["name"]}: FD={r["fd"]:.3f}' for r in self._fus_rows]
+        ax_ov.text(0.02,0.02,'\n'.join(fd_lines),transform=ax_ov.transAxes,
+                   fontsize=7,color='#AAAAAA',va='bottom',ha='left',
+                   bbox=dict(boxstyle='round,pad=0.3',facecolor='#111118',alpha=0.7))
         ax_ov.set_xticks([]); ax_ov.set_yticks([])
-        names = [r['name'] for r in self._fus_rows]
-        ax_ov.set_title('+'.join(names), fontsize=8, color='#AAAAAA')
+        names=[r['name'] for r in self._fus_rows]
+        ax_ov.set_title('+'.join(names),fontsize=8,color='#AAAAAA')
         self._fus_canvas.draw()
         self._fus_canvas.draw()
     def _selected_data_indices(self):
