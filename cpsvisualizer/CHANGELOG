@@ -1,4 +1,9 @@
 # CPS-Visualizer Release Notes
+## 1.3.2 (8 Aug 2026)
+
+### Improvements
+* Quality & AODA tab: tables now side-by-side (left-right) for better use of horizontal space
+
 ## 1.3.1 (8 Aug 2026)
 
 ### Improvements

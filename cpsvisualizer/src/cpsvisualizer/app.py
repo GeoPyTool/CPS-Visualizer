@@ -556,26 +556,29 @@ class CPSVisualizer(QMainWindow):
 
     def _build_quality_aoda_pane(self, parent):
         sc, inner = self._scroll_pane()
-        v = QVBoxLayout(inner)
+        h = QHBoxLayout(inner)
 
-        # Image Quality table (top)
-        v.addWidget(QLabel('Image Quality Metrics'))
+        # Image Quality table (left)
+        qv = QVBoxLayout()
+        qv.addWidget(QLabel('Image Quality Metrics'))
         self._quality_table = CustomQTableView()
         self._quality_table.setModel(PandasModel())
         q_scroll = QScrollArea()
         q_scroll.setWidgetResizable(True)
         q_scroll.setWidget(self._quality_table)
-        q_scroll.setMaximumHeight(300)
-        v.addWidget(q_scroll)
+        qv.addWidget(q_scroll, 1)
+        h.addLayout(qv, 1)
 
-        # AODA table (bottom)
-        v.addWidget(QLabel('AODA Optimization Results'))
+        # AODA table (right)
+        av = QVBoxLayout()
+        av.addWidget(QLabel('AODA Optimization Results'))
         self._aoda_table = CustomQTableView()
         self._aoda_table.setModel(PandasModel())
         a_scroll = QScrollArea()
         a_scroll.setWidgetResizable(True)
         a_scroll.setWidget(self._aoda_table)
-        v.addWidget(a_scroll, 1)
+        av.addWidget(a_scroll, 1)
+        h.addLayout(av, 1)
 
         parent.addTab(sc, 'Quality & AODA')
 

@@ -215,9 +215,9 @@ def fig9_aoda_landscape(data_dict, elements):
     metric_short = [m.replace('mutual_info_', 'MI_').replace('_unflattern', '').replace('_flattern', '_f')
                     .replace('calculate_', '')[:14] for m in metrics]
 
-    fig, ax = plt.subplots(figsize=(18, 7))
+    fig, ax = plt.subplots(figsize=(20, 8))
     cmap = LinearSegmentedColormap.from_list('aoda', ['#f7fbff', '#2171b5'], N=256)
-    im = ax.imshow(heatmap, aspect='auto', cmap=cmap, vmin=0, vmax=1)
+    im = ax.imshow(heatmap, aspect='equal', cmap=cmap, vmin=0, vmax=1)
     ax.set_xticks(range(len(metrics)))
     ax.set_xticklabels(metric_short, rotation=90, fontsize=6)
     ax.set_yticks(range(len(pipelines)))
@@ -258,7 +258,7 @@ def fig10_pca_comparison(data_dict, elements):
     transformed = [pd.DataFrame(apply_transforms(df.values.copy(), pipe_names)) for df in dfs]
     dist_mat = compute_pairwise_matrix(transformed, elements, met_func)
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5.5))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5.8))
 
     # Left: PCA scatter
     coords = pca_r['embedding']
@@ -272,9 +272,10 @@ def fig10_pca_comparison(data_dict, elements):
     ax1.set_ylabel(f'PC2 ({ev[1]*100:.1f}% variance)')
     ax1.set_title('PCA: Element Distribution Patterns', fontweight='bold')
     ax1.grid(True, alpha=0.2, linestyle='--')
+    ax1.set_aspect('equal')
 
     # Right: AODA optimal distance matrix heatmap
-    im2 = ax2.imshow(dist_mat.values, cmap='YlOrRd', aspect='auto')
+    im2 = ax2.imshow(dist_mat.values, cmap='YlOrRd', aspect='equal')
     ax2.set_xticks(range(len(elements)))
     ax2.set_yticks(range(len(elements)))
     ax2.set_xticklabels(elements, fontsize=9)
@@ -301,7 +302,7 @@ def fig11_tsne_comparison(data_dict, elements):
     tsne_r = compute_tsne_embedding(dfs, elements, perplexity=min(5, len(elements)-1), random_state=42)
     bench = compute_comprehensive_benchmark(dfs, elements, n_jobs=1)
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5.5))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5.8))
 
     # t-SNE
     coords = tsne_r['embedding']
@@ -314,6 +315,7 @@ def fig11_tsne_comparison(data_dict, elements):
     ax1.set_ylabel('t-SNE Component 2')
     ax1.set_title(f't-SNE Embedding (KL={tsne_r.get("kl_divergence", 0):.3f})', fontweight='bold')
     ax1.grid(True, alpha=0.2, linestyle='--')
+    ax1.set_aspect('equal')
 
     # DPS comparison mini bar
     methods = ['AODA', 't-SNE', 'PCA', 'UMAP', 'Baseline']
@@ -349,7 +351,7 @@ def fig12_umap_comparison(data_dict, elements):
     bench = compute_comprehensive_benchmark(dfs, elements, n_jobs=1)
     aoda = bench['aoda']
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5.5))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5.8))
 
     coords = umap_r['embedding']
     ax1.scatter(coords[:, 0], coords[:, 1], c=COLORS[5], s=200, alpha=0.85,
@@ -361,6 +363,7 @@ def fig12_umap_comparison(data_dict, elements):
     ax1.set_ylabel('UMAP Component 2')
     ax1.set_title('UMAP: Element Distribution Patterns', fontweight='bold')
     ax1.grid(True, alpha=0.2, linestyle='--')
+    ax1.set_aspect('equal')
 
     # Top-5 AODA pipelines
     top5 = aoda.head(5)
@@ -393,7 +396,7 @@ def fig13_clustering(data_dict, elements):
     hier = compute_hierarchical_clustering(dfs, elements)
     kmeans = compute_kmeans_clustering(dfs, elements, n_clusters=3)
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5.5))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5.8))
 
     # Dendrogram
     Z = hier['linkage']
