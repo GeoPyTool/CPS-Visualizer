@@ -417,6 +417,7 @@ class CPSVisualizer(QMainWindow):
         self.addToolBar(toolbar)
         actions = [
             ('Open Data',      'Ctrl+O', self._on_open),
+            ('Open Folder',    'Ctrl+D', self._on_open_folder),
             ('Clear Data',     None,     self._on_clear),
             ('Calculate All',  'Ctrl+W', self._on_calc_all),
             ('Save Data',      'Ctrl+S', self._on_save),
@@ -931,6 +932,28 @@ class CPSVisualizer(QMainWindow):
             self, 'Open Files', '',
             'CSV Files (*.csv);;Excel Files (*.xls *.xlsx)')
         if not paths:
+            return
+        self._on_clear()
+        for p in paths:
+            df = pd.read_csv(p) if p.endswith('.csv') else pd.read_excel(p)
+            self.df_list.append(df)
+            self.df_name_list.append(self._clean_name(p))
+        self._data_sel.addItems(self.df_name_list)
+        self._fill_picks()
+        self._on_cmp_changed()
+        self._render_map()
+
+    def _on_open_folder(self):
+        import glob
+        directory = QFileDialog.getExistingDirectory(self, 'Open Folder')
+        if not directory:
+            return
+        paths = sorted(glob.glob(os.path.join(directory, '*.csv'))
+                      + glob.glob(os.path.join(directory, '*.xlsx'))
+                      + glob.glob(os.path.join(directory, '*.xls')))
+        if not paths:
+            QMessageBox.information(self, 'Open Folder',
+                                    'No CSV/XLSX files found in the folder.')
             return
         self._on_clear()
         for p in paths:
