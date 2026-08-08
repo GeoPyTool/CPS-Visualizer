@@ -547,6 +547,18 @@ class CPSVisualizer(QMainWindow):
     def _build_comparison_pane(self, parent):
         sc, inner = self._scroll_pane()
         v = QVBoxLayout(inner)
+
+        # Dendrogram Y-axis mode selector
+        mode_bar = QHBoxLayout()
+        mode_bar.addWidget(QLabel('Dendrogram Y-axis:'))
+        self._dendro_mode = QComboBox()
+        self._dendro_mode.addItems(['Auto', 'Linear', 'Log', 'Blended'])
+        self._dendro_mode.currentTextChanged.connect(
+            lambda _: self._on_analysis_tab_changed(1))
+        mode_bar.addWidget(self._dendro_mode)
+        mode_bar.addStretch(1)
+        v.addLayout(mode_bar)
+
         self._cmp_canvas = FigureCanvas(Figure(figsize=(12, 8), dpi=self.dpi))
         self._cmp_canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self._cmp_canvas.setMinimumHeight(600)
@@ -1125,10 +1137,29 @@ class CPSVisualizer(QMainWindow):
             from scipy.cluster.hierarchy import dendrogram
             hier = compute_hierarchical_clustering(dfs, names)
             if hier.get('linkage') is not None:
-                dendrogram(hier['linkage'], labels=names, ax=ax_dendro,
+                Z = hier['linkage']
+                dendrogram(Z, labels=names, ax=ax_dendro,
                            leaf_rotation=45, leaf_font_size=8)
-                ax_dendro.set_yscale('log')
-                ax_dendro.set_ylabel('Ward distance (log)')
+                # --- Y-axis scaling ---
+                mode = 'Auto'
+                if hasattr(self, '_dendro_mode'):
+                    mode = self._dendro_mode.currentText()
+                dists = Z[:, 2]
+                dmin, dmax = float(dists.min()), float(dists.max())
+                ratio = dmax / dmin if dmin > 0 else float('inf')
+                if mode == 'Auto':
+                    mode = 'Log' if ratio > 100 else ('Blended' if ratio > 10 else 'Linear')
+                if mode == 'Log' and dmin > 0:
+                    ax_dendro.set_yscale('log')
+                    ax_dendro.set_ylabel('Ward distance (log)')
+                elif mode == 'Blended' and dmin > 0:
+                    # square-root transform: gentler than log, compresses
+                    # large distances while keeping small ones visible
+                    ax_dendro.set_yscale('function',
+                                         functions=(np.sqrt, lambda y: y ** 2))
+                    ax_dendro.set_ylabel('Ward distance (sqrt)')
+                else:
+                    ax_dendro.set_ylabel('Ward distance')
                 ax_dendro.set_title(
                     f"Dendrogram (r={hier['cophenetic_correlation']:.3f})",
                     fontsize=10)
