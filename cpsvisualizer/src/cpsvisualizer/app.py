@@ -737,7 +737,7 @@ class CPSVisualizer(QMainWindow):
         if len(self.df_name_list) >= 2 and not self._fus_picks[1].currentText():
             self._fus_picks[1].setCurrentIndex(1)
     def _render_fusion(self):
-        from cpsvisualizer.core import log_transform
+        from cpsvisualizer.core import log_transform, equalize_hist
         from scipy.ndimage import sobel, gaussian_filter, zoom
         import re
         zf = int(self._fus_res.currentText().replace('x', ''))
@@ -753,16 +753,25 @@ class CPSVisualizer(QMainWindow):
                 else: break
             data = self.df_list[self.df_name_list.index(nm)].to_numpy().copy()
             raw = np.nan_to_num(data.astype(float), nan=0, posinf=0, neginf=0)
-            V = log_transform(raw)
+            # middle column enhancement: log + equalize (paper's best)
+            V = equalize_hist(log_transform(raw))
             V = (V - V.min()) / (V.max() - V.min() + 1e-10)
+            # Otsu contours on downsampled V, then convert to V-space coords
             from skimage.filters import threshold_otsu
             from skimage.measure import find_contours
             from scipy.ndimage import gaussian_filter as gf
-            ds_small = _downsample(V, 80, 80)
-            thresh = threshold_otsu(ds_small)
-            binary = (ds_small > thresh).astype(np.float64)
+            ds = _downsample(V, 80, 80)
+            thresh = threshold_otsu(ds)
+            binary = (ds > thresh).astype(np.float64)
             binary_sm = gf(binary, sigma=1.5)
-            contours = find_contours(binary_sm, level=0.5)
+            contours_ds = find_contours(binary_sm, level=0.5)
+            # convert to V-space coords (so zoom doesn't break them)
+            contours_v = []
+            for cnt in contours_ds:
+                cx = cnt[:, 1] * (V.shape[1] / ds.shape[1])
+                cy = cnt[:, 0] * (V.shape[0] / ds.shape[0])
+                contours_v.append(np.column_stack([cx, cy]))
+            # structural edges
             d2 = gaussian_filter(raw, sigma=1.0)
             E = np.hypot(sobel(d2, axis=0), sobel(d2, axis=1))
             E = (E - E.min()) / (E.max() - E.min() + 1e-10)
@@ -770,11 +779,14 @@ class CPSVisualizer(QMainWindow):
             if zf > 1:
                 raw = zoom(raw, zf, order=3); V = zoom(V, zf, order=3)
                 E = zoom(E, zf, order=3)
+                # scale contours & trace to match zoomed V
+                for c in contours_v:
+                    c[:, 0] *= zf; c[:, 1] *= zf
+                tx *= zf; ty *= zf
             self._fus_rows.append({
                 'name': nm, 'raw': raw, 'V': V, 'E': E,
                 'tx': tx, 'ty': ty, 'fd': fd,
-                'contours': contours, 'ds_h': ds_small.shape[0],
-                'ds_w': ds_small.shape[1],
+                'contours_v': contours_v,
             })
         self._render_fusion_display()
     def _compute_trajectory(self, data):
@@ -824,7 +836,7 @@ class CPSVisualizer(QMainWindow):
         colors = self._fus_colors
         for row_i in range(n_rows):
             r = self._fus_rows[row_i]
-            line_color = colors[row_i]
+            col = colors[row_i]
             for col_j in range(3):
                 ax = fig.add_subplot(gs[row_i, col_j])
                 ax.set_facecolor(FIG_BG)
@@ -838,31 +850,32 @@ class CPSVisualizer(QMainWindow):
                     arr_disp = _downsample(s, 180, 180)
                     ax.imshow(arr_disp, cmap=ink_colormap(), vmin=lo, vmax=hi,
                               aspect='auto', interpolation='nearest')
-                    sx = arr_disp.shape[1] / r['ds_w']
-                    sy = arr_disp.shape[0] / r['ds_h']
-                    for cnt in r['contours']:
-                        ax.plot(cnt[:, 1]*sx, cnt[:, 0]*sy,
-                                color=line_color, linewidth=0.6, alpha=0.7)
+                    # contours in V-space, scale to arr_disp
+                    sx = arr_disp.shape[1] / r['V'].shape[1]
+                    sy = arr_disp.shape[0] / r['V'].shape[0]
+                    for cnt in r['contours_v']:
+                        ax.plot(cnt[:, 0] * sx, cnt[:, 1] * sy,
+                                color=col, linewidth=0.5, alpha=0.85)
                     if len(r['tx']) > 2:
-                        tx_s = r['tx']*(arr_disp.shape[1]/r['V'].shape[1])
-                        ty_s = r['ty']*(arr_disp.shape[0]/r['V'].shape[0])
-                        ax.plot(tx_s, ty_s, color=line_color, linewidth=0.5, alpha=0.5)
+                        tx_s = r['tx'] * sx; ty_s = r['ty'] * sy
+                        ax.plot(tx_s, ty_s, color=col, linewidth=0.5, alpha=0.5)
                 else:
                     s, lo, hi = display_scale(r['raw'], 1, 99)
                     arr_disp = _downsample(s, 180, 180)
                     ax.imshow(arr_disp, cmap=ink_colormap(), vmin=lo, vmax=hi,
                               aspect='auto', interpolation='nearest')
                     if len(r['tx']) > 2:
-                        tx_s = r['tx']*(arr_disp.shape[1]/r['V'].shape[1])
-                        ty_s = r['ty']*(arr_disp.shape[0]/r['V'].shape[0])
-                        ax.plot(tx_s, ty_s, color=line_color, linewidth=0.5, alpha=0.4)
+                        sx = arr_disp.shape[1] / r['V'].shape[1]
+                        sy = arr_disp.shape[0] / r['V'].shape[0]
+                        ax.plot(r['tx']*sx, r['ty']*sy,
+                                color=col, linewidth=0.4, alpha=0.4)
                 ax.set_aspect(_square_aspect(*arr_disp.shape),
                               adjustable='box', anchor='C')
                 ttl = f'{r["name"]}  {cols[col_j]}'
                 if col_j == 1 and r['fd']: ttl += f' (FD={r["fd"]:.3f})'
                 ax.set_title(ttl, fontsize=7)
                 ax.set_xticks([]); ax.set_yticks([])
-        # Overlay: lines-only comparison (no background image)
+        # Overlay: lines-only comparison
         ax_ov = fig.add_subplot(gs[:, 3])
         ax_ov.set_facecolor('#111118')
         max_h = max(r['V'].shape[0] for r in self._fus_rows)
@@ -870,14 +883,10 @@ class CPSVisualizer(QMainWindow):
         ax_ov.set_xlim(0, max_w); ax_ov.set_ylim(max_h, 0)
         for row_i, r in enumerate(self._fus_rows):
             col = colors[row_i]
-            h, w = r['V'].shape[0], r['V'].shape[1]
-            sx_c = w / r['ds_w']; sy_c = h / r['ds_h']
-            for cnt in r['contours']:
-                ax_ov.plot(cnt[:, 1]*sx_c, cnt[:, 0]*sy_c,
-                           color=col, linewidth=0.5, alpha=0.6)
+            for cnt in r['contours_v']:
+                ax_ov.plot(cnt[:, 0], cnt[:, 1], color=col, linewidth=0.5, alpha=0.6)
             if len(r['tx']) > 2:
-                ax_ov.plot(r['tx'], r['ty'], color=col,
-                           linewidth=1.0, alpha=0.8)
+                ax_ov.plot(r['tx'], r['ty'], color=col, linewidth=1.0, alpha=0.85)
         ax_ov.set_aspect(_square_aspect(max_h, max_w),
                          adjustable='box', anchor='C')
         fd_lines = [f'{r["name"]}: FD={r["fd"]:.3f}' for r in self._fus_rows]
