@@ -708,6 +708,16 @@ class CPSVisualizer(QMainWindow):
         self._fus_res.addItems(['1x', '2x', '4x'])
         self._fus_res.currentTextChanged.connect(self._on_fusion_change)
         bar.addWidget(self._fus_res)
+        bar.addWidget(QLabel('\u03b1:'))
+        self._fus_alpha = QSlider(Qt.Horizontal)
+        self._fus_alpha.setRange(0, 100)
+        self._fus_alpha.setValue(50)
+        self._fus_alpha.valueChanged.connect(self._on_fusion_change)
+        bar.addWidget(self._fus_alpha)
+        self._fus_alpha_label = QLabel('0.50')
+        self._fus_alpha.valueChanged.connect(
+            lambda v: self._fus_alpha_label.setText(f'{v/100:.2f}'))
+        bar.addWidget(self._fus_alpha_label)
         bar.addStretch(1)
         v.addLayout(bar)
         self._fus_canvas = FigureCanvas(Figure(figsize=(20, 15), dpi=self.dpi))
@@ -753,10 +763,13 @@ class CPSVisualizer(QMainWindow):
                 else: break
             data = self.df_list[self.df_name_list.index(nm)].to_numpy().copy()
             raw = np.nan_to_num(data.astype(float), nan=0, posinf=0, neginf=0)
-            # middle column: robust z-score (statistical anomaly map)
+            raw01 = (raw - raw.min()) / (raw.max() - raw.min() + 1e-10)
+            # middle column: visual-statistical fusion
             from cpsvisualizer.fusion import robust_zscore
-            V = robust_zscore(raw)
-            V = (V - V.min()) / (V.max() - V.min() + 1e-10)
+            zs = robust_zscore(raw)
+            zs01 = (zs - zs.min()) / (zs.max() - zs.min() + 1e-10)
+            al = self._fus_alpha.value() / 100.0
+            V = al * raw01 + (1 - al) * zs01
             # Otsu contours on downsampled V, then convert to V-space coords
             from skimage.filters import threshold_otsu
             from skimage.measure import find_contours
