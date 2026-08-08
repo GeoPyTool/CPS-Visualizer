@@ -56,7 +56,14 @@ from cpsvisualizer.adaptive import find_optimal_power
 
 warnings.filterwarnings("ignore")
 
-plt.rcParams['font.family'] = 'sans-serif'
+plt.rcParams['font.family'] = 'serif'
+plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
+plt.rcParams['font.size'] = 14
+plt.rcParams['axes.labelsize'] = 14
+plt.rcParams['axes.titlesize'] = 15
+plt.rcParams['xtick.labelsize'] = 11
+plt.rcParams['ytick.labelsize'] = 11
+plt.rcParams['legend.fontsize'] = 11
 plt.rcParams['svg.fonttype'] = 'none'
 plt.rcParams['pdf.fonttype'] = 'truetype'
 
@@ -880,7 +887,7 @@ class CPSVisualizer(QMainWindow):
                 ax.set_aspect(_square_aspect(*arr_disp.shape),adjustable='box',anchor='C')
                 ttl=f'{r["name"]}  {cols[col_j]}'
                 if col_j==1 and r['fd']: ttl+=f' (FD={r["fd"]:.3f})'
-                ax.set_title(ttl,fontsize=7); ax.set_xticks([]); ax.set_yticks([])
+                ax.set_title(ttl,fontsize=12); ax.set_xticks([]); ax.set_yticks([])
         # Overlay: base element data as background + colored traces on top
         ax_ov=fig.add_subplot(gs[:,3]); ax_ov.set_facecolor(FIG_BG)
         if self._fus_base_raw is not None:
@@ -910,11 +917,11 @@ class CPSVisualizer(QMainWindow):
                          adjustable='box', anchor='C')
         fd_lines = [f'{r["name"]}: FD={r["fd"]:.3f}' for r in self._fus_rows]
         ax_ov.text(0.02, 0.98, '\n'.join(fd_lines), transform=ax_ov.transAxes,
-                   fontsize=7, color='#333333', va='top', ha='left',
+                   fontsize=12, color='#333333', va='top', ha='left',
                    bbox=dict(boxstyle='round,pad=0.3', facecolor='#FFFFFF', alpha=0.6))
         ax_ov.set_xticks([]); ax_ov.set_yticks([])
         names = [r['name'] for r in self._fus_rows]
-        ax_ov.set_title('+'.join(names), fontsize=8)
+        ax_ov.set_title('+'.join(names), fontsize=12)
         self._fus_canvas.draw()
     def _draw_fe_contour(self, ax, arr_disp):
         if not self._fe_contours: return
@@ -1103,15 +1110,15 @@ class CPSVisualizer(QMainWindow):
             im = ax.imshow(vals, cmap=sci_colormap(), vmin=0.0, vmax=1.0,
                            aspect='equal')
             images.append(im)
-            ax.set_title(mname, fontsize=9)
+            ax.set_title(mname, fontsize=11)
             ax.set_xticks(range(n))
             ax.set_yticks(range(n))
             if row == nrows - 1:
-                ax.set_xticklabels(names, rotation=45, ha='right', fontsize=7)
+                ax.set_xticklabels(names, rotation=45, ha='right', fontsize=12)
             else:
                 ax.set_xticklabels([])
             if col == 0:
-                ax.set_yticklabels(names, fontsize=7)
+                ax.set_yticklabels(names, fontsize=12)
             else:
                 ax.set_yticklabels([])
         # vertical colorbar in the narrow 5th column, spanning both rows
@@ -1126,7 +1133,7 @@ class CPSVisualizer(QMainWindow):
             # put label on the left side of the bar so it is not clipped
             cbar.ax.yaxis.set_label_position('left')
             cbar.ax.yaxis.set_ticks_position('right')
-            cbar.set_label('normalized distance (0-1)', fontsize=8)
+            cbar.set_label('normalized distance (0-1)', fontsize=12)
         else:
             cax.axis('off')
         self._dist_canvas.draw()
@@ -1156,8 +1163,8 @@ class CPSVisualizer(QMainWindow):
         im = ax.imshow(vals, cmap=sci_colormap(), vmin=0.0, vmax=1.0, aspect='equal')
         ax.set_xticks(range(len(df.columns)))
         ax.set_yticks(range(len(df.index)))
-        ax.set_xticklabels(df.columns, rotation=45, ha='right', fontsize=8)
-        ax.set_yticklabels(df.index, fontsize=8)
+        ax.set_xticklabels(df.columns, rotation=45, ha='right', fontsize=12)
+        ax.set_yticklabels(df.index, fontsize=12)
         ax.set_title(f'{name}  (normalized 0-1)')
         cbar = fig.colorbar(im, ax=ax, shrink=0.85)
         cbar.set_label('normalized distance')
@@ -1340,7 +1347,7 @@ class CPSVisualizer(QMainWindow):
             ax.imshow(s, cmap=ink_colormap(), vmin=lo, vmax=hi,
                       aspect='auto', interpolation='nearest')
             ax.set_aspect(_square_aspect(*data.shape), adjustable='box', anchor='C')
-            ax.set_title(name, fontsize=9)
+            ax.set_title(name, fontsize=11)
         fig.tight_layout()
         self._map_canvas.draw()
 
@@ -1397,7 +1404,7 @@ class CPSVisualizer(QMainWindow):
                        edgecolors='k', linewidths=0.5)
             for i, n in enumerate(names):
                 ax.annotate(n, (coords[i, 0], coords[i, 1]),
-                            textcoords="offset points", xytext=(4, 4), fontsize=9)
+                            textcoords="offset points", xytext=(4, 4), fontsize=11)
             ax.set_xlabel(f'PC1 ({ev[0]*100:.1f}%)' if ev else 'PC1')
             ax.set_ylabel(f'PC2 ({ev[1]*100:.1f}%)' if len(ev) > 1 else 'PC2')
             ax.set_title('PCA: Element Distribution Patterns')
@@ -1419,8 +1426,8 @@ class CPSVisualizer(QMainWindow):
             im = ax.imshow(corr.values, cmap='RdBu_r', vmin=-1, vmax=1, aspect='equal')
             ax.set_xticks(range(len(names)))
             ax.set_yticks(range(len(names)))
-            ax.set_xticklabels(names, rotation=45, ha='right', fontsize=8)
-            ax.set_yticklabels(names, fontsize=8)
+            ax.set_xticklabels(names, rotation=45, ha='right', fontsize=12)
+            ax.set_yticklabels(names, fontsize=12)
             ax.set_title('Pearson Correlation Matrix')
             fig.colorbar(im, ax=ax, shrink=0.85)
         except Exception as e:
@@ -1456,10 +1463,10 @@ class CPSVisualizer(QMainWindow):
                         for i, n in enumerate(names):
                             ax.annotate(n, (emb[i, 0], emb[i, 1]),
                                         textcoords="offset points",
-                                        xytext=(4, 4), fontsize=8)
+                                        xytext=(4, 4), fontsize=12)
                         ax.set_aspect('equal', adjustable='box')
                         _equal_lims(ax, emb[:, 0], emb[:, 1])
-                ax.set_title(title, fontsize=10)
+                ax.set_title(title, fontsize=12)
                 ax.grid(True, alpha=0.3, linestyle='--')
             except Exception as e:
                 ax.text(0.5, 0.5, str(e), ha='center', va='center')
@@ -1514,7 +1521,7 @@ class CPSVisualizer(QMainWindow):
                     ax_dendro.set_ylabel('Ward distance')
                 ax_dendro.set_title(
                     f"Dendrogram (r={hier['cophenetic_correlation']:.3f})",
-                    fontsize=10)
+                    fontsize=12)
             else:
                 ax_dendro.text(0.5, 0.5, 'Need >=2 samples',
                                ha='center', va='center')
@@ -1537,9 +1544,9 @@ class CPSVisualizer(QMainWindow):
                     if mask[i]:
                         ax_kmeans.annotate(n, (pca_emb[i, 0], pca_emb[i, 1]),
                                            textcoords="offset points",
-                                           xytext=(4, 4), fontsize=8)
-            ax_kmeans.legend(fontsize=7)
-            ax_kmeans.set_title(f"K-Means (k={km['n_clusters']})", fontsize=10)
+                                           xytext=(4, 4), fontsize=12)
+            ax_kmeans.legend(fontsize=12)
+            ax_kmeans.set_title(f"K-Means (k={km['n_clusters']})", fontsize=12)
             ax_kmeans.set_aspect('equal', adjustable='box')
             _equal_lims(ax_kmeans, pca_emb[:, 0], pca_emb[:, 1])
             ax_kmeans.grid(True, alpha=0.3, linestyle='--')
@@ -1776,8 +1783,8 @@ class CPSVisualizer(QMainWindow):
             ax.fill(angles, v, alpha=0.15, color=colors[i])
         ax.set_thetagrids([a * 180 / _np.pi for a in angles[:-1]], dims)
         ax.set_ylim(0, 1)
-        ax.set_title('Method Comparison (Radar)', fontsize=10, pad=20)
-        ax.legend(loc='upper right', bbox_to_anchor=(1.35, 1.15), fontsize=7)
+        ax.set_title('Method Comparison (Radar)', fontsize=12, pad=20)
+        ax.legend(loc='upper right', bbox_to_anchor=(1.35, 1.15), fontsize=12)
 
     def _draw_dps_comparison(self, ax, dfs, names):
         from cpsvisualizer.core import Euclidean
@@ -1821,14 +1828,14 @@ class CPSVisualizer(QMainWindow):
         bars = ax.bar(x, dps_vals, color=colors, edgecolor='black',
                       linewidth=0.3)
         ax.set_xticks(x)
-        ax.set_xticklabels(methods, fontsize=8)
+        ax.set_xticklabels(methods, fontsize=12)
         ax.set_ylabel('DPS')
-        ax.set_title('DPS Method Comparison', fontsize=10)
+        ax.set_title('DPS Method Comparison', fontsize=12)
         ax.grid(axis='y', alpha=0.2, linestyle='--')
         for bar, val in zip(bars, dps_vals):
             ax.text(bar.get_x() + bar.get_width() / 2,
                     bar.get_height() + 0.01,
-                    f'{val:.3f}', ha='center', va='bottom', fontsize=7)
+                    f'{val:.3f}', ha='center', va='bottom', fontsize=12)
 
     def _draw_image_quality(self, ax, dfs, names):
         try:
@@ -1870,10 +1877,10 @@ class CPSVisualizer(QMainWindow):
             ax.bar(x + w, cei, w, label='CEI (norm)', color='#A5A5A5',
                    edgecolor='black', linewidth=0.3)
             ax.set_xticks(x)
-            ax.set_xticklabels(tnames, rotation=45, ha='right', fontsize=7)
+            ax.set_xticklabels(tnames, rotation=45, ha='right', fontsize=12)
             ax.set_ylim(0, 1.05)
-            ax.legend(fontsize=7)
-            ax.set_title('Image Quality Metrics (normalized)', fontsize=10)
+            ax.legend(fontsize=12)
+            ax.set_title('Image Quality Metrics (normalized)', fontsize=12)
             ax.grid(axis='y', alpha=0.2, linestyle='--')
         except Exception as e:
             ax.text(0.5, 0.5, str(e), ha='center', va='center')
@@ -1898,9 +1905,9 @@ class CPSVisualizer(QMainWindow):
             bars = ax.bar(x, entropy, color='#5B9BD5',
                           edgecolor='black', linewidth=0.3)
             ax.set_xticks(x)
-            ax.set_xticklabels(tnames, rotation=45, ha='right', fontsize=7)
+            ax.set_xticklabels(tnames, rotation=45, ha='right', fontsize=12)
             ax.set_ylabel('Normalized Entropy')
-            ax.set_title('Pipeline Entropy Benchmark', fontsize=10)
+            ax.set_title('Pipeline Entropy Benchmark', fontsize=12)
             ax.grid(axis='y', alpha=0.2, linestyle='--')
             for bar, val in zip(bars, entropy):
                 ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.01,

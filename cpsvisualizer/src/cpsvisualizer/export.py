@@ -47,7 +47,14 @@ from cpsvisualizer.adaptive import (
     find_optimal_power, discrimination_power_score,
 )
 
-plt.rcParams['font.family'] = 'sans-serif'
+plt.rcParams['font.family'] = 'serif'
+plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
+plt.rcParams['font.size'] = 14
+plt.rcParams['axes.labelsize'] = 14
+plt.rcParams['axes.titlesize'] = 15
+plt.rcParams['xtick.labelsize'] = 11
+plt.rcParams['ytick.labelsize'] = 11
+plt.rcParams['legend.fontsize'] = 11
 plt.rcParams['svg.fonttype'] = 'none'
 plt.rcParams['pdf.fonttype'] = 'truetype'
 
@@ -165,7 +172,7 @@ def _export_maps(dataset, dfs, names, out_dirs):
                   aspect='auto', interpolation='nearest')
         ax.set_aspect(_square_aspect(*data.shape), adjustable='box',
                       anchor='C')
-        ax.set_title(nm, fontsize=9)
+        ax.set_title(nm, fontsize=11)
     for j in range(n, rows * cols):
         fig.delaxes(axes[j // cols, j % cols])
     fig.tight_layout()
@@ -238,13 +245,13 @@ def _export_distance(dataset, dfs, names, out_dirs):
         im = ax.imshow(vals, cmap=sci_colormap(), vmin=0.0, vmax=1.0,
                        aspect='equal')
         images.append(im)
-        ax.set_title(mname, fontsize=9)
+        ax.set_title(mname, fontsize=11)
         ax.set_xticks(range(n)); ax.set_yticks(range(n))
         if row == nrows - 1:
-            ax.set_xticklabels(names, rotation=45, ha='right', fontsize=7)
+            ax.set_xticklabels(names, rotation=45, ha='right', fontsize=12)
         else:
             ax.set_xticklabels([])
-        ax.set_yticklabels(names if col == 0 else [], fontsize=7)
+        ax.set_yticklabels(names if col == 0 else [], fontsize=12)
     cax = fig.add_subplot(gs[:, ncols])
     import matplotlib as _mpl
     norm = _mpl.colors.Normalize(vmin=0.0, vmax=1.0)
@@ -253,7 +260,7 @@ def _export_distance(dataset, dfs, names, out_dirs):
     cbar = fig.colorbar(sm, cax=cax)
     cbar.ax.yaxis.set_label_position('left')
     cbar.ax.yaxis.set_ticks_position('right')
-    cbar.set_label('normalized distance (0-1)', fontsize=8)
+    cbar.set_label('normalized distance (0-1)', fontsize=12)
     cbar.ax.tick_params(labelsize=7)
     _save(fig, f'distance_{tag}', out_dirs)
 
@@ -281,7 +288,7 @@ def _export_stats(dataset, dfs, names, out_dirs):
                edgecolors='k', linewidths=0.5)
     for i, n in enumerate(names):
         ax.annotate(n, (coords[i, 0], coords[i, 1]),
-                    textcoords="offset points", xytext=(4, 4), fontsize=9)
+                    textcoords="offset points", xytext=(4, 4), fontsize=11)
     ax.set_xlabel(f'PC1 ({ev[0]*100:.1f}%)' if ev else 'PC1')
     ax.set_ylabel(f'PC2 ({ev[1]*100:.1f}%)' if len(ev) > 1 else 'PC2')
     ax.set_title('PCA: Element Distribution Patterns')
@@ -298,8 +305,8 @@ def _export_stats(dataset, dfs, names, out_dirs):
     fig.patch.set_facecolor(FIG_BG); ax.set_facecolor(FIG_BG)
     im = ax.imshow(corr_df.values, cmap='RdBu_r', vmin=-1, vmax=1, aspect='equal')
     ax.set_xticks(range(len(names))); ax.set_yticks(range(len(names)))
-    ax.set_xticklabels(names, rotation=45, ha='right', fontsize=8)
-    ax.set_yticklabels(names, fontsize=8)
+    ax.set_xticklabels(names, rotation=45, ha='right', fontsize=12)
+    ax.set_yticklabels(names, fontsize=12)
     ax.set_title('Pearson Correlation Matrix')
     fig.colorbar(im, ax=ax, shrink=0.85)
     fig.tight_layout()
@@ -330,10 +337,10 @@ def _export_comparison(dataset, dfs, names, out_dirs):
                     for i, n in enumerate(names):
                         ax.annotate(n, (emb[i, 0], emb[i, 1]),
                                     textcoords="offset points",
-                                    xytext=(4, 4), fontsize=8)
+                                    xytext=(4, 4), fontsize=12)
                     ax.set_aspect('equal', adjustable='box')
                     _equal_lims(ax, emb[:, 0], emb[:, 1])
-            ax.set_title(title, fontsize=10)
+            ax.set_title(title, fontsize=12)
             ax.grid(True, alpha=0.3, linestyle='--')
         except Exception as e:
             ax.text(0.5, 0.5, str(e), ha='center', va='center')
@@ -373,7 +380,7 @@ def _export_comparison(dataset, dfs, names, out_dirs):
                 ax_dendro.set_ylabel('Ward distance')
             ax_dendro.set_title(
                 f"Dendrogram (r={hier['cophenetic_correlation']:.3f})",
-                fontsize=10)
+                fontsize=12)
     except Exception as e:
         ax_dendro.text(0.5, 0.5, str(e), ha='center', va='center')
 
@@ -392,9 +399,9 @@ def _export_comparison(dataset, dfs, names, out_dirs):
                 if mask[i]:
                     ax_kmeans.annotate(n2, (pca_emb[i, 0], pca_emb[i, 1]),
                                        textcoords="offset points",
-                                       xytext=(4, 4), fontsize=8)
-        ax_kmeans.legend(fontsize=7)
-        ax_kmeans.set_title(f"K-Means (k={km['n_clusters']})", fontsize=10)
+                                       xytext=(4, 4), fontsize=12)
+        ax_kmeans.legend(fontsize=12)
+        ax_kmeans.set_title(f"K-Means (k={km['n_clusters']})", fontsize=12)
         ax_kmeans.set_aspect('equal', adjustable='box')
         _equal_lims(ax_kmeans, pca_emb[:, 0], pca_emb[:, 1])
         ax_kmeans.grid(True, alpha=0.3, linestyle='--')
@@ -575,8 +582,8 @@ def _draw_radar_headless(ax, dfs, names):
         ax.fill(angles, v, alpha=0.15, color=colors[i])
     ax.set_thetagrids([a * 180 / _np.pi for a in angles[:-1]], dims)
     ax.set_ylim(0, 1)
-    ax.set_title('Method Comparison (Radar)', fontsize=10, pad=20)
-    ax.legend(loc='upper right', bbox_to_anchor=(1.35, 1.15), fontsize=7)
+    ax.set_title('Method Comparison (Radar)', fontsize=12, pad=20)
+    ax.legend(loc='upper right', bbox_to_anchor=(1.35, 1.15), fontsize=12)
 
 
 def _draw_dps_headless(ax, dfs, names):
@@ -608,12 +615,12 @@ def _draw_dps_headless(ax, dfs, names):
     colors = ['#4472C4', '#ED7D31', '#5B9BD5', '#FFC000', '#A5A5A5']
     x = range(len(methods))
     bars = ax.bar(x, dps_vals, color=colors, edgecolor='black', linewidth=0.3)
-    ax.set_xticks(x); ax.set_xticklabels(methods, fontsize=8)
-    ax.set_ylabel('DPS'); ax.set_title('DPS Method Comparison', fontsize=10)
+    ax.set_xticks(x); ax.set_xticklabels(methods, fontsize=12)
+    ax.set_ylabel('DPS'); ax.set_title('DPS Method Comparison', fontsize=12)
     ax.grid(axis='y', alpha=0.2, linestyle='--')
     for bar, val in zip(bars, dps_vals):
         ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.01,
-                f'{val:.3f}', ha='center', va='bottom', fontsize=7)
+                f'{val:.3f}', ha='center', va='bottom', fontsize=12)
 
 
 def _draw_iqm_headless(ax, dfs, names):
@@ -645,9 +652,9 @@ def _draw_iqm_headless(ax, dfs, names):
         ax.bar(x + w, cei, w, label='CEI (norm)', color='#A5A5A5',
                edgecolor='black', linewidth=0.3)
         ax.set_xticks(x)
-        ax.set_xticklabels(tnames, rotation=45, ha='right', fontsize=7)
-        ax.set_ylim(0, 1.05); ax.legend(fontsize=7)
-        ax.set_title('Image Quality Metrics (normalized)', fontsize=10)
+        ax.set_xticklabels(tnames, rotation=45, ha='right', fontsize=12)
+        ax.set_ylim(0, 1.05); ax.legend(fontsize=12)
+        ax.set_title('Image Quality Metrics (normalized)', fontsize=12)
         ax.grid(axis='y', alpha=0.2, linestyle='--')
     except Exception as e:
         ax.text(0.5, 0.5, str(e), ha='center', va='center')
@@ -670,9 +677,9 @@ def _draw_bench_headless(ax, dfs, names):
         bars = ax.bar(x, entropy, color='#5B9BD5',
                       edgecolor='black', linewidth=0.3)
         ax.set_xticks(x)
-        ax.set_xticklabels(tnames, rotation=45, ha='right', fontsize=7)
+        ax.set_xticklabels(tnames, rotation=45, ha='right', fontsize=12)
         ax.set_ylabel('Normalized Entropy')
-        ax.set_title('Pipeline Entropy Benchmark', fontsize=10)
+        ax.set_title('Pipeline Entropy Benchmark', fontsize=12)
         ax.grid(axis='y', alpha=0.2, linestyle='--')
         for bar, val in zip(bars, entropy):
             ax.text(bar.get_x() + bar.get_width() / 2,
