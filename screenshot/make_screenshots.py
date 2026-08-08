@@ -151,6 +151,13 @@ w._analysis_tabs.setCurrentIndex(3)
 w._analysis_selected(3)
 grab('14_figures.png')
 
+# Fusion tab (needs Geology loaded)
+_load_into(geo_files)
+w._render_sel.setCurrentText('raw'); w._view_idx = 0
+w._analysis_tabs.setCurrentIndex(4)
+w._analysis_selected(4)
+grab('15_fusion.png')
+
 # 11_comparison: one screenshot per DataSample sub-directory (Geology,
 # Bivalve shell, Tissue).  Ceramics_Archaeology is a single sample x
 # element table (not surface-scan matrices) and needs >=2 datasets for
