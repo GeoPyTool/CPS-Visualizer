@@ -144,9 +144,6 @@ grab('10_statistics_pca.png')
 w._analysis_tabs.setCurrentIndex(2)
 w._analysis_selected(2)
 grab('12_image_quality.png')
-
-w._analysis_tabs.setCurrentIndex(3)
-w._analysis_selected(3)
 grab('13_aoda.png')
 
 # 11_comparison: one screenshot per DataSample sub-directory (Geology,

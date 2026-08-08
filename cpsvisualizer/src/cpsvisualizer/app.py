@@ -518,8 +518,7 @@ class CPSVisualizer(QMainWindow):
         self._analysis_tabs = QTabWidget()
         self._build_stats_pane(self._analysis_tabs)
         self._build_comparison_pane(self._analysis_tabs)
-        self._build_quality_pane(self._analysis_tabs)
-        self._build_aoda_pane(self._analysis_tabs)
+        self._build_quality_aoda_pane(self._analysis_tabs)
         self._analysis_tabs.currentChanged.connect(self._on_analysis_tab_changed)
         v = QVBoxLayout()
         v.addWidget(self._analysis_tabs)
@@ -555,22 +554,30 @@ class CPSVisualizer(QMainWindow):
         v.addStretch(1)
         parent.addTab(sc, 'Comparison')
 
-    def _build_quality_pane(self, parent):
+    def _build_quality_aoda_pane(self, parent):
         sc, inner = self._scroll_pane()
         v = QVBoxLayout(inner)
-        self._quality_canvas = FigureCanvas(Figure(figsize=(8, 5), dpi=self.dpi))
-        v.addWidget(self._quality_canvas)
-        v.addStretch(1)
-        parent.addTab(sc, 'Image Quality')
 
-    def _build_aoda_pane(self, parent):
-        sc, inner = self._scroll_pane()
-        v = QVBoxLayout(inner)
+        # Image Quality table (top)
+        v.addWidget(QLabel('Image Quality Metrics'))
+        self._quality_table = CustomQTableView()
+        self._quality_table.setModel(PandasModel())
+        q_scroll = QScrollArea()
+        q_scroll.setWidgetResizable(True)
+        q_scroll.setWidget(self._quality_table)
+        q_scroll.setMaximumHeight(300)
+        v.addWidget(q_scroll)
+
+        # AODA table (bottom)
+        v.addWidget(QLabel('AODA Optimization Results'))
         self._aoda_table = CustomQTableView()
         self._aoda_table.setModel(PandasModel())
-        v.addWidget(self._aoda_table, 1)
-        v.addStretch(1)
-        parent.addTab(sc, 'AODA')
+        a_scroll = QScrollArea()
+        a_scroll.setWidgetResizable(True)
+        a_scroll.setWidget(self._aoda_table)
+        v.addWidget(a_scroll, 1)
+
+        parent.addTab(sc, 'Quality & AODA')
 
     # ------------------------------------------------------------------
     # Helpers
@@ -639,12 +646,11 @@ class CPSVisualizer(QMainWindow):
     def _all_figs(self):
         return [self._map_fig, self._dist_canvas.figure,
                 self._pca_canvas.figure, self._corr_canvas.figure,
-                self._cmp_canvas.figure, self._quality_canvas.figure]
+                self._cmp_canvas.figure]
 
     def _redraw_all(self):
         for c in (self._map_canvas, self._dist_canvas, self._pca_canvas,
-                  self._corr_canvas, self._cmp_canvas,
-                  self._quality_canvas):
+                  self._corr_canvas, self._cmp_canvas):
             c.draw()
 
     def _on_save(self):
@@ -1004,9 +1010,8 @@ class CPSVisualizer(QMainWindow):
             self._render_stats(dfs, names)
         elif tab_idx == 1:    # Comparison
             self._render_comparison(dfs, names)
-        elif tab_idx == 2:    # Image Quality
+        elif tab_idx == 2:    # Quality & AODA
             self._render_quality(dfs, names)
-        elif tab_idx == 3:    # AODA
             self._render_aoda(dfs, names)
 
     def _on_analysis_tab_changed(self, idx):
@@ -1156,34 +1161,38 @@ class CPSVisualizer(QMainWindow):
         self._cmp_canvas.draw()
 
     def _render_quality(self, dfs, names):
-        fig = self._quality_canvas.figure
-        fig.clear()
-        fig.patch.set_facecolor(FIG_BG)
-        ax = fig.add_subplot(111)
         try:
             results = batch_evaluate_transforms(dfs, names, self._trans_funcs)
             tnames = list(results.keys())
             if not tnames:
-                ax.text(0.5, 0.5, 'No metrics', ha='center', va='center')
-            else:
-                psnr = [np.mean([m.get('psnr', 0) for m in results[t].values()]) for t in tnames]
-                entropy = [np.mean([m['entropy_transformed']['normalized_entropy']
-                                    for m in results[t].values() if 'error' not in m])
-                           for t in tnames]
-                cei = [np.mean([m.get('cei', 0) for m in results[t].values()]) for t in tnames]
-                x = np.arange(len(tnames))
-                w = 0.25
-                ax.bar(x - w, psnr, w, label='PSNR')
-                ax.bar(x, entropy, w, label='Entropy')
-                ax.bar(x + w, cei, w, label='CEI')
-                ax.set_xticks(x)
-                ax.set_xticklabels(tnames, rotation=45, ha='right', fontsize=8)
-                ax.legend(fontsize=8)
-                ax.set_title('Image Quality Metrics by Transform')
-        except Exception as e:
-            ax.text(0.5, 0.5, str(e), ha='center', va='center')
-        fig.tight_layout()
-        self._quality_canvas.draw()
+                self._quality_table.setModel(PandasModel())
+                return
+            rows = []
+            for t in tnames:
+                r = results[t]
+                ds = [m for m in r.values() if isinstance(m, dict) and 'psnr' in m]
+                if not ds:
+                    continue
+                psnr = np.mean([m.get('psnr', 0) for m in ds])
+                entropy = np.mean([m['entropy_transformed']['normalized_entropy']
+                                   for m in ds if 'entropy_transformed' in m
+                                   and 'error' not in m])
+                cei = np.mean([m.get('cei', 0) for m in ds])
+                ten = np.mean([m.get('tenengrad_transformed', 0) for m in ds])
+                ssim = np.mean([m.get('ssim_vs_original', {})
+                                .get('ssim', 0) for m in ds])
+                rows.append({
+                    'Transform': t,
+                    'PSNR': round(psnr, 4),
+                    'Entropy': round(entropy, 4),
+                    'CEI': round(cei, 4),
+                    'Tenengrad': round(ten, 4),
+                    'SSIM': round(ssim, 4),
+                })
+            df = pd.DataFrame(rows).set_index('Transform') if rows else pd.DataFrame()
+            self._quality_table.setModel(PandasModel(df))
+        except Exception:
+            self._quality_table.setModel(PandasModel())
 
     def _render_aoda(self, dfs, names):
         if len(dfs) < 3:

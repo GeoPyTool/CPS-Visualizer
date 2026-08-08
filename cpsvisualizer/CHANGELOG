@@ -1,4 +1,12 @@
 # CPS-Visualizer Release Notes
+## 1.3.1 (8 Aug 2026)
+
+### Improvements
+* Merged Image Quality and AODA into a single "Quality & AODA" tab
+* Image Quality is now a table (Transform x PSNR/Entropy/CEI/Tenengrad/SSIM)
+  instead of a bar chart — easier to read and compare values
+* AODA table below the quality table in the same tab
+
 ## 1.3.0 (8 Aug 2026)
 
 ### Fixes
