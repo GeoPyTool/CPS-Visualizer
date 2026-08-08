@@ -734,7 +734,7 @@ class CPSVisualizer(QMainWindow):
         gs = GridSpec(nrows, ncols + 1, figure=fig,
                       width_ratios=[1, 1, 1, 1, 0.06],
                       wspace=0.25, hspace=0.30,
-                      left=0.08, right=0.99, top=0.95, bottom=0.12)
+                      left=0.06, right=0.97, top=0.95, bottom=0.12)
         images = []
         for pos, mname in enumerate(metrics):
             if mname not in self.result_df_dict:
