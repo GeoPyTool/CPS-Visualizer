@@ -114,18 +114,21 @@ def ink_colormap(opaque_min=False, name='cps_ink'):
     return cmap
 
 
-def warm_colormap(name='cps_warm'):
-    """Warm sequential colormap (transparent → yellow → orange → dark red)
-    for distance heatmaps where a pure-grayscale ramp is too austere."""
+def sci_colormap(name='cps_viridis'):
+    """Perceptually-uniform sequential colormap (viridis-based) with
+    transparent minimum — the gold standard for scientific heatmaps in
+    top journals (Nature, Science, etc.).  Colour-blind friendly and
+    monotonically increasing in lightness."""
+    import matplotlib.pyplot as plt
     from matplotlib.colors import LinearSegmentedColormap
-    cdict = {
-        'red':  [(0.0, 1.0, 1.0), (0.5, 0.98, 0.98), (1.0, 0.6, 0.6)],
-        'green':[(0.0, 1.0, 1.0), (0.5, 0.6, 0.6),  (1.0, 0.05, 0.05)],
-        'blue': [(0.0, 0.9, 0.9), (0.5, 0.1, 0.1),  (1.0, 0.05, 0.05)],
-        'alpha':[(0.0, 0.0, 0.0), (0.1, 0.7, 0.7), (1.0, 1.0, 1.0)],
-    }
-    cmap = LinearSegmentedColormap(name, cdict, N=256)
-    cmap.set_under((0.0, 0.0, 0.0, 0.0))
+    base = plt.get_cmap('viridis')
+    colors = list(base(np.linspace(0, 1, 256)))
+    colors[0] = (0, 0, 0, 0)          # fully transparent
+    for i in range(1, 10):
+        r, g, b, _ = base(i / 255)
+        colors[i] = (r, g, b, i / 20)  # fade in
+    cmap = LinearSegmentedColormap.from_list(name, colors, N=256)
+    cmap.set_under((0, 0, 0, 0))
     return cmap
 
 

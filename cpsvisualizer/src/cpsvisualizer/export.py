@@ -35,7 +35,7 @@ if _root not in sys.path:
 from cpsvisualizer.core import (
     TRANSFORM_FUNCTIONS, DISTANCE_FUNCTIONS, DISTANCE_NAMES,
     compute_pairwise_matrix, apply_transforms, Euclidean,
-    display_scale, ink_colormap, warm_colormap, FIG_BG,
+    display_scale, ink_colormap, sci_colormap, FIG_BG,
 )
 from cpsvisualizer.metrics import batch_evaluate_transforms
 from cpsvisualizer.comparison import (
@@ -235,7 +235,7 @@ def _export_distance(dataset, dfs, names, out_dirs):
         row, col = pos // ncols, pos % ncols
         ax = fig.add_subplot(gs[row, col])
         ax.set_facecolor(FIG_BG)
-        im = ax.imshow(vals, cmap=warm_colormap(), vmin=0.0, vmax=1.0,
+        im = ax.imshow(vals, cmap=sci_colormap(), vmin=0.0, vmax=1.0,
                        aspect='equal')
         images.append(im)
         ax.set_title(mname, fontsize=9)
@@ -248,7 +248,7 @@ def _export_distance(dataset, dfs, names, out_dirs):
     cax = fig.add_subplot(gs[:, ncols])
     import matplotlib as _mpl
     norm = _mpl.colors.Normalize(vmin=0.0, vmax=1.0)
-    sm = _mpl.cm.ScalarMappable(cmap=warm_colormap(), norm=norm)
+    sm = _mpl.cm.ScalarMappable(cmap=sci_colormap(), norm=norm)
     sm.set_array([])
     cbar = fig.colorbar(sm, cax=cax)
     cbar.ax.yaxis.set_label_position('left')

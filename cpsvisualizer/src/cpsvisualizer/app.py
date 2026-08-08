@@ -37,7 +37,7 @@ from matplotlib.patches import Rectangle
 from cpsvisualizer.core import (
     TRANSFORM_FUNCTIONS, DISTANCE_FUNCTIONS, DISTANCE_NAMES,
     load_data_files, apply_transforms, compute_pairwise_matrix,
-    log_centering_transform, display_scale, ink_colormap, warm_colormap, FIG_BG,
+    log_centering_transform, display_scale, ink_colormap, sci_colormap, FIG_BG,
 )
 from cpsvisualizer.statistics import (
     compute_pca, compute_pearson_correlation_matrix,
@@ -840,7 +840,7 @@ class CPSVisualizer(QMainWindow):
             row, col = pos // ncols, pos % ncols
             ax = fig.add_subplot(gs[row, col])
             ax.set_facecolor(FIG_BG)
-            im = ax.imshow(vals, cmap=warm_colormap(), vmin=0.0, vmax=1.0,
+            im = ax.imshow(vals, cmap=sci_colormap(), vmin=0.0, vmax=1.0,
                            aspect='equal')
             images.append(im)
             ax.set_title(mname, fontsize=9)
@@ -859,7 +859,7 @@ class CPSVisualizer(QMainWindow):
         if images:
             import matplotlib as _mpl
             norm = _mpl.colors.Normalize(vmin=0.0, vmax=1.0)
-            sm = _mpl.cm.ScalarMappable(cmap=warm_colormap(), norm=norm)
+            sm = _mpl.cm.ScalarMappable(cmap=sci_colormap(), norm=norm)
             sm.set_array([])
             cbar = fig.colorbar(sm, cax=cax)
             cbar.ax.tick_params(labelsize=7)
@@ -893,7 +893,7 @@ class CPSVisualizer(QMainWindow):
             if hi - lo > 1e-12:
                 vals = (vals - lo) / (hi - lo)
                 np.fill_diagonal(vals, 0.0)
-        im = ax.imshow(vals, cmap=warm_colormap(), vmin=0.0, vmax=1.0, aspect='equal')
+        im = ax.imshow(vals, cmap=sci_colormap(), vmin=0.0, vmax=1.0, aspect='equal')
         ax.set_xticks(range(len(df.columns)))
         ax.set_yticks(range(len(df.index)))
         ax.set_xticklabels(df.columns, rotation=45, ha='right', fontsize=8)
