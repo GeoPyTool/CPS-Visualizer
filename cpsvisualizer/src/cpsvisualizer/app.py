@@ -689,8 +689,7 @@ class CPSVisualizer(QMainWindow):
         bar = QHBoxLayout()
         self._fus_picks = []
         self._fus_color_btns = []
-        # pastel colors
-        default_colors = ['#E07070', '#70C070', '#7090E0']
+        default_colors = ['#FF3030', '#30CC30', '#3080FF']
         for i, (lbl, dc) in enumerate(zip(['A:', 'B:', 'C:'], default_colors)):
             bar.addWidget(QLabel(lbl))
             pb = QComboBox()
@@ -721,7 +720,7 @@ class CPSVisualizer(QMainWindow):
         from PySide6.QtWidgets import QColorDialog
         btn = self._fus_color_btns[idx]
         current = btn.palette().button().color()
-        color = QColorDialog.getColor(current, self, 'Pick channel color')
+        color = QColorDialog.getColor(current, self, 'Pick line color')
         if color.isValid():
             btn.setStyleSheet(f'background-color: {color.name()}; border:1px solid #888;')
             self._on_fusion_change()
@@ -745,7 +744,7 @@ class CPSVisualizer(QMainWindow):
         self._fus_colors = []
         for btn in self._fus_color_btns:
             m = re.search(r'#[0-9a-fA-F]{6}', btn.styleSheet())
-            self._fus_colors.append(m.group() if m else '#E07070')
+            self._fus_colors.append(m.group() if m else '#FF3030')
         self._fus_rows = []
         for i in range(3):
             nm = self._fus_picks[i].currentText()
@@ -813,26 +812,11 @@ class CPSVisualizer(QMainWindow):
             else: fdim = 0.0
         except Exception: fdim = 0.0
         return cx, cy, fdim
-    @staticmethod
-    def _soft_cmap(hex_color, name='cps_fus'):
-        from matplotlib.colors import LinearSegmentedColormap, to_rgba
-        r, g, b, _ = to_rgba(hex_color)
-        # very subtle tint: max alpha ~0.35
-        cdict = {
-            'red':   [(0, 1, 1), (1, r, r)],
-            'green': [(0, 1, 1), (1, g, g)],
-            'blue':  [(0, 1, 1), (1, b, b)],
-            'alpha': [(0, 0, 0), (0.02, 0, 0), (0.15, 0.08, 0.08), (1, 0.35, 0.35)],
-        }
-        cmap = LinearSegmentedColormap(name, cdict, N=256)
-        cmap.set_under((0, 0, 0, 0))
-        return cmap
     def _render_fusion_display(self, _=None):
         if not self._fus_rows: return
         fig = self._fus_canvas.figure
         fig.clear(); fig.patch.set_facecolor(FIG_BG)
         from matplotlib.gridspec import GridSpec
-        from scipy.ndimage import zoom as _zoom
         n_rows = len(self._fus_rows)
         gs = GridSpec(n_rows, 4, figure=fig, wspace=0.06, hspace=0.22,
                       left=0.03, right=0.99, top=0.94, bottom=0.04)
@@ -840,48 +824,47 @@ class CPSVisualizer(QMainWindow):
         colors = self._fus_colors
         for row_i in range(n_rows):
             r = self._fus_rows[row_i]
-            cmap = self._soft_cmap(colors[row_i])
+            line_color = colors[row_i]
             for col_j in range(3):
                 ax = fig.add_subplot(gs[row_i, col_j])
                 ax.set_facecolor(FIG_BG)
                 if col_j == 0:
                     s, lo, hi = display_scale(r['raw'], 1, 99)
                     arr_disp = _downsample(s, 180, 180)
-                    ax.imshow(arr_disp, cmap=cmap, vmin=lo, vmax=hi,
+                    ax.imshow(arr_disp, cmap=ink_colormap(), vmin=lo, vmax=hi,
                               aspect='auto', interpolation='nearest')
                 elif col_j == 1:
                     s, lo, hi = display_scale(r['V'], 0, 100)
                     arr_disp = _downsample(s, 180, 180)
-                    ax.imshow(arr_disp, cmap=cmap, vmin=lo, vmax=hi,
+                    ax.imshow(arr_disp, cmap=ink_colormap(), vmin=lo, vmax=hi,
                               aspect='auto', interpolation='nearest')
                     sx = arr_disp.shape[1] / r['ds_w']
                     sy = arr_disp.shape[0] / r['ds_h']
                     for cnt in r['contours']:
                         ax.plot(cnt[:, 1]*sx, cnt[:, 0]*sy,
-                                color=colors[row_i], linewidth=0.6, alpha=0.65)
+                                color=line_color, linewidth=0.6, alpha=0.7)
                     if len(r['tx']) > 2:
-                        tx_s = r['tx'] * (arr_disp.shape[1] / r['V'].shape[1])
-                        ty_s = r['ty'] * (arr_disp.shape[0] / r['V'].shape[0])
-                        ax.plot(tx_s, ty_s, color='#FFFFFF', linewidth=0.5, alpha=0.5)
+                        tx_s = r['tx']*(arr_disp.shape[1]/r['V'].shape[1])
+                        ty_s = r['ty']*(arr_disp.shape[0]/r['V'].shape[0])
+                        ax.plot(tx_s, ty_s, color=line_color, linewidth=0.5, alpha=0.5)
                 else:
                     s, lo, hi = display_scale(r['raw'], 1, 99)
                     arr_disp = _downsample(s, 180, 180)
-                    ax.imshow(arr_disp, cmap=cmap, vmin=lo, vmax=hi,
+                    ax.imshow(arr_disp, cmap=ink_colormap(), vmin=lo, vmax=hi,
                               aspect='auto', interpolation='nearest')
                     if len(r['tx']) > 2:
-                        tx_s = r['tx'] * (arr_disp.shape[1] / r['V'].shape[1])
-                        ty_s = r['ty'] * (arr_disp.shape[0] / r['V'].shape[0])
-                        ax.plot(tx_s, ty_s, color='#FFFFFF', linewidth=0.5, alpha=0.4)
+                        tx_s = r['tx']*(arr_disp.shape[1]/r['V'].shape[1])
+                        ty_s = r['ty']*(arr_disp.shape[0]/r['V'].shape[0])
+                        ax.plot(tx_s, ty_s, color=line_color, linewidth=0.5, alpha=0.4)
                 ax.set_aspect(_square_aspect(*arr_disp.shape),
                               adjustable='box', anchor='C')
                 ttl = f'{r["name"]}  {cols[col_j]}'
                 if col_j == 1 and r['fd']: ttl += f' (FD={r["fd"]:.3f})'
                 ax.set_title(ttl, fontsize=7)
                 ax.set_xticks([]); ax.set_yticks([])
-        # Overlay: contour + trace line synthesis on dark canvas
+        # Overlay: lines-only comparison (no background image)
         ax_ov = fig.add_subplot(gs[:, 3])
-        ax_ov.set_facecolor('#0d0d18')
-        # find common display coord range
+        ax_ov.set_facecolor('#111118')
         max_h = max(r['V'].shape[0] for r in self._fus_rows)
         max_w = max(r['V'].shape[1] for r in self._fus_rows)
         ax_ov.set_xlim(0, max_w); ax_ov.set_ylim(max_h, 0)
@@ -891,17 +874,16 @@ class CPSVisualizer(QMainWindow):
             sx_c = w / r['ds_w']; sy_c = h / r['ds_h']
             for cnt in r['contours']:
                 ax_ov.plot(cnt[:, 1]*sx_c, cnt[:, 0]*sy_c,
-                           color=col, linewidth=0.7, alpha=0.75)
+                           color=col, linewidth=0.5, alpha=0.6)
             if len(r['tx']) > 2:
                 ax_ov.plot(r['tx'], r['ty'], color=col,
-                           linewidth=0.8, alpha=0.7)
+                           linewidth=1.0, alpha=0.8)
         ax_ov.set_aspect(_square_aspect(max_h, max_w),
                          adjustable='box', anchor='C')
-        # FD comparison legend
         fd_lines = [f'{r["name"]}: FD={r["fd"]:.3f}' for r in self._fus_rows]
         ax_ov.text(0.02, 0.02, '\n'.join(fd_lines), transform=ax_ov.transAxes,
                    fontsize=7, color='#AAAAAA', va='bottom', ha='left',
-                   bbox=dict(boxstyle='round,pad=0.3', facecolor='#0d0d18', alpha=0.7))
+                   bbox=dict(boxstyle='round,pad=0.3', facecolor='#111118', alpha=0.7))
         ax_ov.set_xticks([]); ax_ov.set_yticks([])
         names = [r['name'] for r in self._fus_rows]
         ax_ov.set_title('+'.join(names), fontsize=8, color='#AAAAAA')
