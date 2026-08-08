@@ -716,6 +716,16 @@ class CPSVisualizer(QMainWindow):
         self._fus_alpha.valueChanged.connect(
             lambda v: self._fus_alpha_label.setText(f'{v/100:.2f}'))
         bar.addWidget(self._fus_alpha_label)
+        bar.addWidget(QLabel('  Res:'))
+        self._fus_res = QComboBox()
+        self._fus_res.addItems(['1x', '2x', '4x'])
+        self._fus_res.currentTextChanged.connect(self._on_fusion_change)
+        bar.addWidget(self._fus_res)
+        bar.addWidget(QLabel('Trace:'))
+        self._fus_trace_cb = QCheckBox()
+        self._fus_trace_cb.setChecked(True)
+        self._fus_trace_cb.stateChanged.connect(self._on_fusion_change)
+        bar.addWidget(self._fus_trace_cb)
         bar.addStretch(1)
         v.addLayout(bar)
 
@@ -750,23 +760,37 @@ class CPSVisualizer(QMainWindow):
         idx = self.df_name_list.index(name)
         data = self.df_list[idx].to_numpy().copy()
 
+        # super-resolution: zoom factor
+        res_str = self._fus_res.currentText()
+        zoom_f = int(res_str.replace('x', ''))
+
         # Panel 1: visual enhancement (log + equalize)
         V = equalize_hist(log_transform(data))
         V = (V - V.min()) / (V.max() - V.min() + 1e-10)
+        if zoom_f > 1:
+            from scipy.ndimage import zoom
+            V = zoom(V, zoom_f, order=3)
 
-        # Panel 2: structural contour extraction (sobel gradient magnitudes
-        #          as line traces)
+        # Panel 2: structural contour extraction
         from scipy.ndimage import sobel, gaussian_filter
         d = np.nan_to_num(data.astype(float), nan=0.0, posinf=0.0, neginf=0.0)
         d_sm = gaussian_filter(d, sigma=1.0)
         gx = sobel(d_sm, axis=0); gy = sobel(d_sm, axis=1)
         E = np.hypot(gx, gy)
         E = (E - E.min()) / (E.max() - E.min() + 1e-10)
+        if zoom_f > 1:
+            from scipy.ndimage import zoom
+            E = zoom(E, zoom_f, order=3)
 
-        # Panel 3: fused overlay (visual + statistical weighted)
+        # --- trajectory trace + fractal dimension ---
+        trace_x, trace_y, fractal_dim = self._compute_trajectory(data)
+
+        # Panel 3: fused overlay
         stat_name = self._fus_stat.currentText()
         S = STAT_ENHANCE[stat_name](data.astype(np.float64))
         S = (S - S.min()) / (S.max() - S.min() + 1e-10)
+        if zoom_f > 1:
+            S = zoom(S, zoom_f, order=3)
         fmode = self._fus_mode.currentText()
         alpha = self._fus_alpha.value() / 100.0
         F = FUSION_FUNCTIONS[fmode](V, S, alpha)
@@ -774,7 +798,55 @@ class CPSVisualizer(QMainWindow):
 
         self._fus_V = V; self._fus_E = E; self._fus_F = F
         self._fus_name = name
+        self._fus_trace_x = trace_x; self._fus_trace_y = trace_y
+        self._fus_fdim = fractal_dim
         self._render_fusion_display()
+
+    def _compute_trajectory(self, data):
+        """Row-wise weighted centroid path + box-counting fractal dimension."""
+        d = np.nan_to_num(np.asarray(data, dtype=float),
+                          nan=0.0, posinf=0.0, neginf=0.0)
+        rows, cols = d.shape
+        # row-wise weighted centroid
+        row_idx = np.arange(rows)
+        col_weights = d.sum(axis=1)
+        valid = col_weights > 0
+        if valid.sum() < 3:
+            return np.array([]), np.array([]), 0.0
+        # centroid for each row by weighted mean of column indices
+        centroid_x = (d * np.arange(cols)).sum(axis=1)
+        centroid_x = np.divide(centroid_x, col_weights,
+                               out=np.full_like(centroid_x, cols/2),
+                               where=col_weights > 0)
+        centroid_y = row_idx.astype(float)
+        # smooth with moving average (window 5% of rows)
+        window = max(3, int(rows * 0.05))
+        kernel = np.ones(window) / window
+        cx = np.convolve(centroid_x, kernel, mode='same')
+        cy = np.convolve(centroid_y, kernel, mode='same')
+        # fractal dimension (box-counting on binarised image)
+        try:
+            thresh = d.mean() + d.std()
+            binary = (d > thresh).astype(np.uint8)
+            sizes = 2 ** np.arange(1, int(np.log2(min(rows, cols))) - 1)
+            counts = []
+            for s in sizes:
+                if s < 2: continue
+                nr = rows // s; nc = cols // s
+                if nr < 1 or nc < 1: continue
+                boxes = binary[:nr*s, :nc*s].reshape(nr, s, nc, s)
+                counts.append(np.sum(boxes.any(axis=(1, 3))))
+            if len(counts) > 3:
+                sizes_used = sizes[-len(counts):]
+                log_s = np.log(1.0 / sizes_used)
+                log_n = np.log(np.array(counts))
+                m, _ = np.polyfit(log_s, log_n, 1)
+                fdim = abs(round(m, 3))
+            else:
+                fdim = 0.0
+        except Exception:
+            fdim = 0.0
+        return cx, cy, fdim
 
     def _render_fusion_display(self, _=None):
         if not hasattr(self, '_fus_V') or self._fus_V is None:
@@ -783,11 +855,19 @@ class CPSVisualizer(QMainWindow):
         fig.clear(); fig.patch.set_facecolor(FIG_BG)
         from matplotlib.gridspec import GridSpec
         gs = GridSpec(1, 3, figure=fig, wspace=0.08,
-                      left=0.04, right=0.98, top=0.90, bottom=0.06)
+                      left=0.04, right=0.98, top=0.88, bottom=0.06)
 
-        titles = ['Visual Enhancement', 'Structural Contours',
-                  f'Fused [{self._fus_mode.currentText()} '
-                  f'\u03b1={self._fus_alpha.value()/100:.2f}]']
+        show_trace = self._fus_trace_cb.isChecked()
+        res_str = self._fus_res.currentText()
+        fmode = self._fus_mode.currentText()
+        alpha = self._fus_alpha.value() / 100.0
+
+        titles = [
+            'Visual Enhancement',
+            ('Structural Contours\n(FD=%.3f)' % self._fus_fdim)
+            if self._fus_fdim else 'Structural Contours',
+            f'Fused [{fmode} \u03b1={alpha:.2f}]',
+        ]
         arrays = [self._fus_V, self._fus_E, self._fus_F]
         for i, (title, arr) in enumerate(zip(titles, arrays)):
             ax = fig.add_subplot(gs[0, i])
@@ -796,11 +876,20 @@ class CPSVisualizer(QMainWindow):
             s, lo, hi = display_scale(arr_disp, 0, 100)
             ax.imshow(s, cmap=ink_colormap(), vmin=lo, vmax=hi,
                       aspect='auto', interpolation='nearest')
+            # overlay trajectory trace on panels 0 and 1
+            if show_trace and i < 2 and len(self._fus_trace_x) > 2:
+                # scale trace coords to downsampled display size
+                sx = self._fus_trace_x * (arr_disp.shape[1] / self._fus_V.shape[1])
+                sy = self._fus_trace_y * (arr_disp.shape[0] / self._fus_V.shape[0])
+                ax.plot(sx, sy, color='#FF4040', linewidth=1.0, alpha=0.8)
             ax.set_aspect(_square_aspect(*arr_disp.shape),
                           adjustable='box', anchor='C')
             ax.set_title(title, fontsize=9)
             ax.set_xticks([]); ax.set_yticks([])
-        fig.suptitle(f'Fusion: {self._fus_name}', fontsize=12, y=0.96)
+        info = f'Fusion: {self._fus_name}  |  Res: {res_str}'
+        if self._fus_fdim:
+            info += f'  |  FD: {self._fus_fdim:.3f}'
+        fig.suptitle(info, fontsize=11, y=0.96)
         self._fus_canvas.draw()
 
     # ------------------------------------------------------------------

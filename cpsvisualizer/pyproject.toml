@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cpsvisualizer"
-version = "1.5.2"
+version = "1.5.3"
 description = "CPS-Visualizer: visualization, similarity measurement, and statistical analysis of LA-ICP-MS surface scan data."
 readme = "README.rst"
 requires-python = ">=3.12"
