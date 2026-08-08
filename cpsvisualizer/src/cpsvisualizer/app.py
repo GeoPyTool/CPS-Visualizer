@@ -707,9 +707,8 @@ class CPSVisualizer(QMainWindow):
                  'Bray_Curtis', 'Canberra']
 
     def _plot_distance_grid(self):
-        """Render the representative distance metrics as a 2x4 grid of
-        0-1 normalized heatmaps on the Distance tab, with a shared colorbar
-        on the far right."""
+        """Render 8 representative distance metrics as a 2x4 grid of
+        0-1 normalized heatmaps, with a shared colorbar below the grid."""
         fig = self._dist_canvas.figure
         fig.clear()
         fig.patch.set_facecolor(FIG_BG)
@@ -725,6 +724,8 @@ class CPSVisualizer(QMainWindow):
         all_metrics = [m for m in self.DIST_GRID if m in self._dist_funcs]
         nrows, ncols = 2, 4
         metrics = all_metrics[:nrows * ncols]
+        fig.set_layout_engine('constrained', wspace=0.35, hspace=0.35,
+                              rect=[0, 0.08, 1, 1])
         images = []
         for pos, mname in enumerate(metrics):
             if mname not in self.result_df_dict:
@@ -756,16 +757,17 @@ class CPSVisualizer(QMainWindow):
                 ax.set_yticklabels(names, fontsize=7)
             else:
                 ax.set_yticklabels([])
-        # shared colorbar at far right, outside the subplot grid
+        # horizontal colorbar below the grid, centred
         if images:
             import matplotlib as _mpl
             norm = _mpl.colors.Normalize(vmin=0.0, vmax=1.0)
             sm = _mpl.cm.ScalarMappable(cmap=ink_colormap(), norm=norm)
             sm.set_array([])
-            cbar = fig.colorbar(sm, ax=fig.get_axes(),
-                                shrink=0.7, pad=0.02)
+            cax = fig.add_axes([0.38, 0.02, 0.24, 0.03])
+            cax.set_facecolor(FIG_BG)
+            cbar = fig.colorbar(sm, cax=cax, orientation='horizontal')
             cbar.set_label('normalized distance (0-1)', fontsize=8)
-        fig.tight_layout()
+            cbar.ax.tick_params(labelsize=7)
         self._dist_canvas.draw()
 
     def _plot_distance_heatmap(self, name):
