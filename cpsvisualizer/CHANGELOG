@@ -1,4 +1,9 @@
 # CPS-Visualizer Release Notes
+## 1.3.3 (8 Aug 2026)
+
+### Improvements
+* Dendrogram y-axis now log-scaled so small linkage distances are easier to distinguish
+
 ## 1.3.2 (8 Aug 2026)
 
 ### Improvements

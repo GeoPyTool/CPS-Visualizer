@@ -1127,6 +1127,8 @@ class CPSVisualizer(QMainWindow):
             if hier.get('linkage') is not None:
                 dendrogram(hier['linkage'], labels=names, ax=ax_dendro,
                            leaf_rotation=45, leaf_font_size=8)
+                ax_dendro.set_yscale('log')
+                ax_dendro.set_ylabel('Ward distance (log)')
                 ax_dendro.set_title(
                     f"Dendrogram (r={hier['cophenetic_correlation']:.3f})",
                     fontsize=10)
