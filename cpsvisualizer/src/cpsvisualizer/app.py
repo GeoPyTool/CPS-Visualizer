@@ -753,8 +753,9 @@ class CPSVisualizer(QMainWindow):
                 else: break
             data = self.df_list[self.df_name_list.index(nm)].to_numpy().copy()
             raw = np.nan_to_num(data.astype(float), nan=0, posinf=0, neginf=0)
-            # middle column enhancement: log + equalize (paper's best)
-            V = equalize_hist(log_transform(raw))
+            # middle column: robust z-score (statistical anomaly map)
+            from cpsvisualizer.fusion import robust_zscore
+            V = robust_zscore(raw)
             V = (V - V.min()) / (V.max() - V.min() + 1e-10)
             # Otsu contours on downsampled V, then convert to V-space coords
             from skimage.filters import threshold_otsu
