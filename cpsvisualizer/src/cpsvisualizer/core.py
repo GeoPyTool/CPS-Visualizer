@@ -114,6 +114,21 @@ def ink_colormap(opaque_min=False, name='cps_ink'):
     return cmap
 
 
+def warm_colormap(name='cps_warm'):
+    """Warm sequential colormap (transparent → yellow → orange → dark red)
+    for distance heatmaps where a pure-grayscale ramp is too austere."""
+    from matplotlib.colors import LinearSegmentedColormap
+    cdict = {
+        'red':  [(0.0, 1.0, 1.0), (0.5, 0.98, 0.98), (1.0, 0.6, 0.6)],
+        'green':[(0.0, 1.0, 1.0), (0.5, 0.6, 0.6),  (1.0, 0.05, 0.05)],
+        'blue': [(0.0, 0.9, 0.9), (0.5, 0.1, 0.1),  (1.0, 0.05, 0.05)],
+        'alpha':[(0.0, 0.0, 0.0), (0.1, 0.7, 0.7), (1.0, 1.0, 1.0)],
+    }
+    cmap = LinearSegmentedColormap(name, cdict, N=256)
+    cmap.set_under((0.0, 0.0, 0.0, 0.0))
+    return cmap
+
+
 def display_scale(data, low=1.0, high=99.0):
     """Robust display scaling: shift to non-negative, log1p-compress and
     window to the [low, high] percentile so outliers cannot dominate the
