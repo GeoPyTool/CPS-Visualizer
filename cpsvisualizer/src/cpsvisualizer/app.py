@@ -662,6 +662,17 @@ class CPSVisualizer(QMainWindow):
     def _build_figures_pane(self, parent):
         sc, inner = self._scroll_pane()
         v = QVBoxLayout(inner)
+
+        mode_bar = QHBoxLayout()
+        mode_bar.addWidget(QLabel('Radar axis scaling:'))
+        self._radar_mode = QComboBox()
+        self._radar_mode.addItems(['Min-Max', 'Z-Score', 'Log+MinMax', 'Sqrt+MinMax'])
+        self._radar_mode.currentTextChanged.connect(
+            lambda _: self._on_analysis_tab_changed(3))
+        mode_bar.addWidget(self._radar_mode)
+        mode_bar.addStretch(1)
+        v.addLayout(mode_bar)
+
         self._fig_canvas = FigureCanvas(Figure(figsize=(14, 10), dpi=self.dpi))
         _install_figure_export(self._fig_canvas, 'cps_figures')
         self._fig_canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -1434,6 +1445,26 @@ class CPSVisualizer(QMainWindow):
                 scores[m] = [0.5] * 5
 
         import numpy as _np
+        mode = 'Min-Max'
+        if hasattr(self, '_radar_mode'):
+            mode = self._radar_mode.currentText()
+        # apply per-dimension pre-scaling before min-max
+        for d in range(5):
+            vals = [float(scores[m][d]) for m in methods]
+            vmin = min(vals)
+            if mode == 'Z-Score':
+                mu, sig = _np.mean(vals), _np.std(vals) or 1.0
+                vals = [(v - mu) / sig for v in vals]
+            elif mode == 'Log+MinMax':
+                shift = max(0, 1.0 - vmin)
+                vals = [np.log1p(v + shift) for v in vals]
+            elif mode == 'Sqrt+MinMax':
+                shift = max(0, 0.0 - vmin + 1e-6)
+                vals = [np.sqrt(v + shift) for v in vals]
+            # store back
+            for mi, m in enumerate(methods):
+                scores[m][d] = vals[mi]
+        # min-max normalise each dimension to [0, 1]
         for d in range(5):
             vals = [scores[m][d] for m in methods]
             vmin, vmax = min(vals), max(vals)

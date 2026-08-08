@@ -1,4 +1,10 @@
 # CPS-Visualizer Release Notes
+## 1.3.9 (8 Aug 2026)
+
+### Improvements
+* Radar chart: per-dimension axis scaling dropdown (Min-Max / Z-Score /
+  Log+MinMax / Sqrt+MinMax) to balance extreme gaps between methods
+
 ## 1.3.8 (8 Aug 2026)
 
 ### New Features
