@@ -1,4 +1,13 @@
 # CPS-Visualizer Release Notes
+## 1.3.6 (8 Aug 2026)
+
+### Fixes
+* Figures tab: replaced heavy ``compute_comprehensive_benchmark`` with
+  lightweight DPS computations (AODA top-1 + embedding-space DPS + raw)
+  so radar and DPS bar chart render correctly in seconds
+* Image quality CEI values now log1p-clamped (cap 100) to prevent a
+  single extreme outlier from flattening all other bars
+
 ## 1.3.5 (8 Aug 2026)
 
 ### New Features

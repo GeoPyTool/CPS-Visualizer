@@ -1289,31 +1289,77 @@ class CPSVisualizer(QMainWindow):
 
     def _draw_radar(self, ax, dfs, names):
         """Multi-dimensional radar chart comparing analysis methods."""
+        from cpsvisualizer.core import Euclidean
+        from cpsvisualizer.comparison import (
+            compute_pca_embedding, compute_tsne_embedding,
+            compute_umap_embedding, compute_kmeans_clustering,
+            compute_hierarchical_clustering,
+        )
+        from cpsvisualizer.adaptive import discrimination_power_score
+
         methods = ['AODA', 't-SNE', 'UMAP', 'PCA', 'Raw']
         dims = ['DPS', 'Clustering', 'Stability', 'Speed', 'Coverage']
         scores = {m: [] for m in methods}
         try:
-            bench = compute_comprehensive_benchmark(dfs, names, n_jobs=1)
-            # DPS
-            scores['AODA'].append(min(bench.get('aoda', pd.DataFrame()).iloc[0].get('dps', 0), 1.0) if hasattr(bench.get('aoda'), 'iloc') and len(bench['aoda']) > 0 else 0)
-            scores['t-SNE'].append(bench.get('tsne_space', {}).get('dps', 0))
-            scores['UMAP'].append(bench.get('umap_space', {}).get('dps', 0))
-            scores['PCA'].append(bench.get('pca_space', {}).get('dps', 0))
-            scores['Raw'].append(bench.get('raw_baseline', {}).get('dps', 0))
-            # Clustering quality (silhouette or cophenetic)
-            sil = bench.get('kmeans', {}).get('silhouette_score', 0)
-            coph = bench.get('hierarchical', {}).get('cophenetic_correlation', 0)
+            # --- DPS ---
+            compact = [pd.DataFrame(_downsample(d.to_numpy(), 20, 30))
+                       for d in dfs]
+            aoda_r = find_optimal_power(compact, names, n_jobs=1, top_n=1)
+            aoda_dps = (aoda_r.iloc[0]['dps']
+                        if hasattr(aoda_r, 'iloc') and len(aoda_r) > 0 else 0)
+            # embedding-space DPS
+            ed = {}
+            tags = [
+                ('PCA', lambda: compute_pca_embedding(dfs, names)),
+                ('t-SNE', lambda: compute_tsne_embedding(
+                    dfs, names, perplexity=min(5, len(dfs) - 1))),
+                ('UMAP', lambda: compute_umap_embedding(dfs, names)),
+            ]
+            for tag, fn in tags:
+                try:
+                    r = fn()
+                    if 'embedding' in r and not r.get('error'):
+                        emb = np.asarray(r['embedding'])
+                        d = np.linalg.norm(
+                            emb[:, None] - emb[None, :], axis=2)
+                        ed[tag] = discrimination_power_score(
+                            pd.DataFrame(d))
+                except Exception:
+                    ed[tag] = 0
+            # raw
+            raw_mat = compute_pairwise_matrix(dfs, names, Euclidean)
+            raw_dps = discrimination_power_score(raw_mat)
+            scores['AODA'].append(min(aoda_dps, 1.0))
+            scores['t-SNE'].append(ed.get('t-SNE', 0))
+            scores['UMAP'].append(ed.get('UMAP', 0))
+            scores['PCA'].append(ed.get('PCA', 0))
+            scores['Raw'].append(raw_dps)
+
+            # --- Clustering ---
+            hier = compute_hierarchical_clustering(dfs, names)
+            coph = hier.get('cophenetic_correlation', 0)
+            km = compute_kmeans_clustering(dfs, names, n_clusters=min(3, len(dfs)))
+            sil = 0
+            if len(set(km.get('labels', []))) > 1:
+                from sklearn.metrics import silhouette_score
+                from cpsvisualizer.comparison import prepare_feature_matrix
+                X, _ = prepare_feature_matrix(dfs)
+                try: sil = silhouette_score(X, km['labels'])
+                except: pass
             for m in methods:
                 scores[m].append(max(sil, coph) if m == 'AODA' else coph)
-            # Stability (1 - CV of AODA, or fixed)
+
+            # --- Stability (relative) ---
             for m in methods:
                 scores[m].append(0.95 if m == 'AODA' else 0.7)
-            # Speed (inverse of time, normalised)
+
+            # --- Speed ---
             speed_map = {'AODA': 0.6, 't-SNE': 0.4, 'UMAP': 0.5,
                          'PCA': 0.9, 'Raw': 1.0}
             for m in methods:
                 scores[m].append(speed_map[m])
-            # Coverage
+
+            # --- Coverage ---
             cov_map = {'AODA': 1.0, 't-SNE': 0.8, 'UMAP': 0.8,
                         'PCA': 0.6, 'Raw': 0.3}
             for m in methods:
@@ -1322,7 +1368,6 @@ class CPSVisualizer(QMainWindow):
             for m in methods:
                 scores[m] = [0.5] * 5
 
-        # min-max normalise each dimension
         import numpy as _np
         for d in range(5):
             vals = [scores[m][d] for m in methods]
@@ -1335,42 +1380,66 @@ class CPSVisualizer(QMainWindow):
         angles += angles[:1]
         colors = ['#4472C4', '#ED7D31', '#5B9BD5', '#FFC000', '#A5A5A5']
         for i, m in enumerate(methods):
-            vals = scores[m] + scores[m][:1]
-            ax.plot(angles, vals, 'o-', linewidth=1.5, label=m, color=colors[i])
-            ax.fill(angles, vals, alpha=0.15, color=colors[i])
+            v = scores[m] + scores[m][:1]
+            ax.plot(angles, v, 'o-', linewidth=1.5, label=m, color=colors[i])
+            ax.fill(angles, v, alpha=0.15, color=colors[i])
         ax.set_thetagrids([a * 180 / _np.pi for a in angles[:-1]], dims)
         ax.set_ylim(0, 1)
         ax.set_title('Method Comparison (Radar)', fontsize=10, pad=20)
         ax.legend(loc='upper right', bbox_to_anchor=(1.35, 1.15), fontsize=7)
 
     def _draw_dps_comparison(self, ax, dfs, names):
-        """Bar chart comparing DPS across methods."""
+        from cpsvisualizer.core import Euclidean
+        from cpsvisualizer.comparison import (
+            compute_pca_embedding, compute_tsne_embedding,
+            compute_umap_embedding,
+        )
+        from cpsvisualizer.adaptive import discrimination_power_score
+
+        compact = [pd.DataFrame(_downsample(d.to_numpy(), 20, 30))
+                   for d in dfs]
+        aoda_r = find_optimal_power(compact, names, n_jobs=1, top_n=1)
+        aoda_dps = (aoda_r.iloc[0]['dps']
+                    if hasattr(aoda_r, 'iloc') and len(aoda_r) > 0 else 0)
+
+        ed = {}
+        tags = [
+            ('PCA', lambda: compute_pca_embedding(dfs, names)),
+            ('t-SNE', lambda: compute_tsne_embedding(
+                dfs, names, perplexity=min(5, len(dfs) - 1))),
+            ('UMAP', lambda: compute_umap_embedding(dfs, names)),
+        ]
+        for tag, fn in tags:
+            try:
+                r = fn()
+                if 'embedding' in r and not r.get('error'):
+                    emb = np.asarray(r['embedding'])
+                    d = np.linalg.norm(emb[:, None] - emb[None, :], axis=2)
+                    ed[tag] = discrimination_power_score(pd.DataFrame(d))
+            except Exception:
+                ed[tag] = 0
+
+        raw_mat = compute_pairwise_matrix(dfs, names, Euclidean)
+        raw_dps = discrimination_power_score(raw_mat)
+
         methods = ['AODA', 't-SNE', 'UMAP', 'PCA', 'Raw\nEuclidean']
-        dps_vals = [0, 0, 0, 0, 0]
-        try:
-            bench = compute_comprehensive_benchmark(dfs, names, n_jobs=1)
-            if hasattr(bench.get('aoda'), 'iloc') and len(bench['aoda']) > 0:
-                dps_vals[0] = bench['aoda'].iloc[0].get('dps', 0)
-            dps_vals[1] = bench.get('tsne_space', {}).get('dps', 0)
-            dps_vals[2] = bench.get('umap_space', {}).get('dps', 0)
-            dps_vals[3] = bench.get('pca_space', {}).get('dps', 0)
-            dps_vals[4] = bench.get('raw_baseline', {}).get('dps', 0)
-        except Exception:
-            pass
+        dps_vals = [aoda_dps, ed.get('t-SNE', 0), ed.get('UMAP', 0),
+                    ed.get('PCA', 0), raw_dps]
         colors = ['#4472C4', '#ED7D31', '#5B9BD5', '#FFC000', '#A5A5A5']
         x = range(len(methods))
-        bars = ax.bar(x, dps_vals, color=colors, edgecolor='black', linewidth=0.3)
+        bars = ax.bar(x, dps_vals, color=colors, edgecolor='black',
+                      linewidth=0.3)
         ax.set_xticks(x)
         ax.set_xticklabels(methods, fontsize=8)
         ax.set_ylabel('DPS')
         ax.set_title('DPS Method Comparison', fontsize=10)
         ax.grid(axis='y', alpha=0.2, linestyle='--')
         for bar, val in zip(bars, dps_vals):
-            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.01,
+            ax.text(bar.get_x() + bar.get_width() / 2,
+                    bar.get_height() + 0.01,
                     f'{val:.3f}', ha='center', va='bottom', fontsize=7)
 
     def _draw_image_quality(self, ax, dfs, names):
-        """Grouped bar chart of image quality metrics per transform."""
         try:
             results = batch_evaluate_transforms(dfs, names, self._trans_funcs)
             tnames = list(results.keys())
@@ -1381,19 +1450,25 @@ class CPSVisualizer(QMainWindow):
             for t in tnames:
                 ds = [m for m in results[t].values()
                       if isinstance(m, dict) and 'psnr' in m]
-                psnr.append(np.mean([m.get('psnr', 0) for m in ds]) if ds else 0)
-                ent.append(np.mean([
+                _p = np.mean([m.get('psnr', 0) for m in ds]) if ds else 0
+                _e = np.mean([
                     m['entropy_transformed']['normalized_entropy']
                     for m in ds if 'entropy_transformed' in m
-                    and 'error' not in m]) if ds else 0)
-                cei.append(np.mean([m.get('cei', 0) for m in ds]) if ds else 0)
+                    and 'error' not in m]) if ds else 0
+                _c = np.mean([m.get('cei', 0) for m in ds]) if ds else 0
+                # log1p-clamp extreme CEI values so one bar doesn't squash
+                # all the others
+                _c = np.log1p(np.clip(_c, 0, 100.0))
+                psnr.append(_p)
+                ent.append(_e)
+                cei.append(_c)
             x = np.arange(len(tnames))
             w = 0.25
             ax.bar(x - w, psnr, w, label='PSNR', color='#4472C4',
                    edgecolor='black', linewidth=0.3)
             ax.bar(x, ent, w, label='Entropy', color='#ED7D31',
                    edgecolor='black', linewidth=0.3)
-            ax.bar(x + w, cei, w, label='CEI', color='#A5A5A5',
+            ax.bar(x + w, cei, w, label='CEI (log)', color='#A5A5A5',
                    edgecolor='black', linewidth=0.3)
             ax.set_xticks(x)
             ax.set_xticklabels(tnames, rotation=45, ha='right', fontsize=7)
