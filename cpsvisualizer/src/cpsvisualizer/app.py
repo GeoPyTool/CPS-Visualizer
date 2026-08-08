@@ -684,14 +684,12 @@ class CPSVisualizer(QMainWindow):
         parent.addTab(sc, 'Figures')
 
     def _build_fusion_pane(self, parent):
-        """Fusion — up to 3 elements × 3 columns (raw / enhanced+contour
-        / original+trace) + RGB overlay spanning all rows, rightmost."""
         sc, inner = self._scroll_pane()
         v = QVBoxLayout(inner)
         bar = QHBoxLayout()
         self._fus_picks = []
         self._fus_color_btns = []
-        default_colors = ['#FF0000', '#00FF00', '#0000FF']
+        default_colors = ['#FF0000', '#00CC00', '#0088FF']
         for i, (lbl, dc) in enumerate(zip(['A:', 'B:', 'C:'], default_colors)):
             bar.addWidget(QLabel(lbl))
             pb = QComboBox()
@@ -705,13 +703,6 @@ class CPSVisualizer(QMainWindow):
             cb.clicked.connect(lambda checked, n=idx: self._pick_fusion_color(n))
             bar.addWidget(cb)
             self._fus_color_btns.append(cb)
-        bar.addWidget(QLabel('Stat:'))
-        self._fus_stat = QComboBox()
-        from cpsvisualizer.fusion import STAT_ENHANCE_NAMES
-        self._fus_stat.addItems(STAT_ENHANCE_NAMES)
-        self._fus_stat.setCurrentText('robust_zscore')
-        self._fus_stat.currentTextChanged.connect(self._on_fusion_change)
-        bar.addWidget(self._fus_stat)
         bar.addWidget(QLabel('Res:'))
         self._fus_res = QComboBox()
         self._fus_res.addItems(['1x', '2x', '4x'])
@@ -746,10 +737,10 @@ class CPSVisualizer(QMainWindow):
         if len(self.df_name_list) >= 2 and not self._fus_picks[1].currentText():
             self._fus_picks[1].setCurrentIndex(1)
     def _render_fusion(self):
-        from cpsvisualizer.core import log_transform, equalize_hist
+        from cpsvisualizer.core import log_transform
         from scipy.ndimage import sobel, gaussian_filter, zoom
-        zf = int(self._fus_res.currentText().replace('x', ''))
         import re
+        zf = int(self._fus_res.currentText().replace('x', ''))
         self._fus_colors = []
         for btn in self._fus_color_btns:
             m = re.search(r'#[0-9a-fA-F]{6}', btn.styleSheet())
@@ -758,22 +749,35 @@ class CPSVisualizer(QMainWindow):
         for i in range(3):
             nm = self._fus_picks[i].currentText()
             if not nm or nm not in self.df_name_list:
-                if i < 2: continue  # first two are required
+                if i < 2: continue
                 else: break
             data = self.df_list[self.df_name_list.index(nm)].to_numpy().copy()
             raw = np.nan_to_num(data.astype(float), nan=0, posinf=0, neginf=0)
-            raw01 = (raw - raw.min()) / (raw.max() - raw.min() + 1e-10)
-            V = equalize_hist(log_transform(data))
+            V = log_transform(raw)
             V = (V - V.min()) / (V.max() - V.min() + 1e-10)
-            d2 = gaussian_filter(np.nan_to_num(data.astype(float), nan=0, posinf=0, neginf=0), sigma=1.0)
+            # Otsu binarization + contours on downsampled data
+            from skimage.filters import threshold_otsu
+            from skimage.measure import find_contours
+            from scipy.ndimage import gaussian_filter as gf
+            ds_small = _downsample(V, 80, 80)
+            thresh = threshold_otsu(ds_small)
+            binary = (ds_small > thresh).astype(np.float64)
+            binary_sm = gf(binary, sigma=1.5)
+            contours = find_contours(binary_sm, level=0.5)
+            # structural edges
+            d2 = gaussian_filter(raw, sigma=1.0)
             E = np.hypot(sobel(d2, axis=0), sobel(d2, axis=1))
             E = (E - E.min()) / (E.max() - E.min() + 1e-10)
             tx, ty, fd = self._compute_trajectory(data)
             if zf > 1:
-                raw = zoom(raw, zf, order=3); raw01 = zoom(raw01, zf, order=3)
-                V = zoom(V, zf, order=3); E = zoom(E, zf, order=3)
-            self._fus_rows.append({'name': nm, 'raw': raw, 'raw01': raw01,
-                                   'V': V, 'E': E, 'tx': tx, 'ty': ty, 'fd': fd})
+                raw = zoom(raw, zf, order=3); V = zoom(V, zf, order=3)
+                E = zoom(E, zf, order=3)
+            self._fus_rows.append({
+                'name': nm, 'raw': raw, 'V': V, 'E': E,
+                'tx': tx, 'ty': ty, 'fd': fd,
+                'contours': contours, 'ds_h': ds_small.shape[0],
+                'ds_w': ds_small.shape[1],
+            })
         self._render_fusion_display()
     def _compute_trajectory(self, data):
         d = np.nan_to_num(np.asarray(data, dtype=float), nan=0.0, posinf=0.0, neginf=0.0)
@@ -807,27 +811,34 @@ class CPSVisualizer(QMainWindow):
                 log_n = np.log(np.array(counts))
                 m, _ = np.polyfit(log_s, log_n, 1)
                 fdim = abs(round(m, 3))
-            else:
-                fdim = 0.0
-        except Exception:
-            fdim = 0.0
+            else: fdim = 0.0
+        except Exception: fdim = 0.0
         return cx, cy, fdim
+    @staticmethod
+    def _tinted_cmap(hex_color, name='cps_fus'):
+        from matplotlib.colors import LinearSegmentedColormap, to_rgba
+        r, g, b, _ = to_rgba(hex_color)
+        cdict = {
+            'red':   [(0, r, r), (1, r, r)],
+            'green': [(0, g, g), (1, g, g)],
+            'blue':  [(0, b, b), (1, b, b)],
+            'alpha': [(0, 0, 0), (0.05, 0, 0), (0.15, 0.3, 0.3), (1, 1, 1)],
+        }
+        cmap = LinearSegmentedColormap(name, cdict, N=256)
+        cmap.set_under((0, 0, 0, 0))
+        return cmap
     def _render_fusion_display(self, _=None):
-        if not self._fus_rows:
-            return
+        if not self._fus_rows: return
         fig = self._fus_canvas.figure
         fig.clear(); fig.patch.set_facecolor(FIG_BG)
-        import re
         from matplotlib.gridspec import GridSpec
-        from matplotlib.colors import to_rgba
+        from scipy.ndimage import zoom as _zoom
         n_rows = len(self._fus_rows)
-        # grid: n_rows × 3 (data) + 1 overlay column spanning all rows
         gs = GridSpec(n_rows, 4, figure=fig, wspace=0.06, hspace=0.22,
                       left=0.03, right=0.99, top=0.94, bottom=0.04)
         cols = ['Raw', 'Enhanced+Contour', 'Original+Trace']
-        # build RGB overlay using display_scale for proper contrast
-        from scipy.ndimage import zoom as _zoom
-        colors = [to_rgba(c)[:3] for c in self._fus_colors[:n_rows]]
+        colors = self._fus_colors
+        # RGB overlay
         scaled_data = []
         for r in self._fus_rows:
             s, lo, hi = display_scale(r['raw'], 1, 99)
@@ -837,49 +848,50 @@ class CPSVisualizer(QMainWindow):
         overlay = np.zeros((mr, mc, 3))
         for ch in range(3):
             if ch < n_rows:
-                overlay[:, :, ch] = scaled_data[ch][:mr, :mc] * 0.8 + 0.1
-        overlay = np.clip(overlay, 0, 1)
-        # data panels
+                overlay[:, :, ch] = scaled_data[ch][:mr, :mc] * 0.85 + 0.08
         for row_i in range(n_rows):
             r = self._fus_rows[row_i]
+            cmap = self._tinted_cmap(colors[row_i])
             for col_j in range(3):
                 ax = fig.add_subplot(gs[row_i, col_j])
                 ax.set_facecolor(FIG_BG)
                 if col_j == 0:
                     s, lo, hi = display_scale(r['raw'], 1, 99)
                     arr_disp = _downsample(s, 180, 180)
-                    ax.imshow(arr_disp, cmap=ink_colormap(), vmin=lo, vmax=hi,
+                    ax.imshow(arr_disp, cmap=cmap, vmin=lo, vmax=hi,
                               aspect='auto', interpolation='nearest')
                 elif col_j == 1:
                     s, lo, hi = display_scale(r['V'], 0, 100)
                     arr_disp = _downsample(s, 180, 180)
-                    ax.imshow(arr_disp, cmap=ink_colormap(), vmin=lo, vmax=hi,
+                    ax.imshow(arr_disp, cmap=cmap, vmin=lo, vmax=hi,
                               aspect='auto', interpolation='nearest')
+                    scale_x = arr_disp.shape[1] / r['ds_w']
+                    scale_y = arr_disp.shape[0] / r['ds_h']
+                    for cnt in r['contours']:
+                        ax.plot(cnt[:, 1] * scale_x, cnt[:, 0] * scale_y,
+                                color=colors[row_i], linewidth=0.7, alpha=0.7)
+                    if len(r['tx']) > 2:
+                        sx = r['tx'] * (arr_disp.shape[1] / r['V'].shape[1])
+                        sy = r['ty'] * (arr_disp.shape[0] / r['V'].shape[0])
+                        ax.plot(sx, sy, color='#FFFFFF', linewidth=0.6, alpha=0.6)
                 else:
                     s, lo, hi = display_scale(r['raw'], 1, 99)
                     arr_disp = _downsample(s, 180, 180)
-                    ax.imshow(arr_disp, cmap=ink_colormap(), vmin=lo, vmax=hi,
+                    ax.imshow(arr_disp, cmap=cmap, vmin=lo, vmax=hi,
                               aspect='auto', interpolation='nearest')
-                # trace on col 1 & 2
-                if col_j >= 1 and len(r['tx']) > 2:
-                    sx = r['tx'] * (arr_disp.shape[1] / r['V'].shape[1])
-                    sy = r['ty'] * (arr_disp.shape[0] / r['V'].shape[0])
-                    ax.plot(sx, sy, color='#FF3030', linewidth=0.7, alpha=0.85)
-                # contour on col 1
-                if col_j == 1:
-                    e_disp = _downsample(r['E'], 180, 180)
-                    ax.contour(e_disp, levels=[0.4, 0.7],
-                               colors='cyan', linewidths=0.35, alpha=0.5)
+                    if len(r['tx']) > 2:
+                        sx = r['tx'] * (arr_disp.shape[1] / r['V'].shape[1])
+                        sy = r['ty'] * (arr_disp.shape[0] / r['V'].shape[0])
+                        ax.plot(sx, sy, color='#FFFFFF', linewidth=0.6, alpha=0.5)
                 ax.set_aspect(_square_aspect(*arr_disp.shape),
                               adjustable='box', anchor='C')
                 ttl = f'{r["name"]}  {cols[col_j]}'
                 if col_j == 1 and r['fd']: ttl += f' (FD={r["fd"]:.3f})'
                 ax.set_title(ttl, fontsize=7)
                 ax.set_xticks([]); ax.set_yticks([])
-        # RGB overlay spanning all rows (last column)
+        # Overlay
         ax_ov = fig.add_subplot(gs[:, 3])
         ax_ov.set_facecolor('#1a1a2e')
-        from scipy.ndimage import zoom as _zoom
         oh, ow = overlay.shape[:2]
         z = min(200/oh, 200/ow)
         ov_disp = _zoom(overlay, (z, z, 1), order=1) if z < 1 else overlay
@@ -889,6 +901,7 @@ class CPSVisualizer(QMainWindow):
         names = [r['name'] for r in self._fus_rows]
         ax_ov.set_title('+'.join(names), fontsize=8)
         ax_ov.set_xticks([]); ax_ov.set_yticks([])
+        self._fus_canvas.draw()
         self._fus_canvas.draw()
     def _selected_data_indices(self):
         return [self.df_name_list.index(it.text())
