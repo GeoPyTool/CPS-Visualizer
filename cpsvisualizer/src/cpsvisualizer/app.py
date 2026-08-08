@@ -719,7 +719,7 @@ class CPSVisualizer(QMainWindow):
         bar.addStretch(1)
         v.addLayout(bar)
 
-        self._fus_canvas = FigureCanvas(Figure(figsize=(16, 6), dpi=self.dpi))
+        self._fus_canvas = FigureCanvas(Figure(figsize=(16, 7), dpi=self.dpi))
         _install_figure_export(self._fus_canvas, 'cps_fusion')
         self._fus_canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self._fus_canvas.setMinimumHeight(400)
@@ -782,8 +782,8 @@ class CPSVisualizer(QMainWindow):
         fig = self._fus_canvas.figure
         fig.clear(); fig.patch.set_facecolor(FIG_BG)
         from matplotlib.gridspec import GridSpec
-        gs = GridSpec(1, 3, figure=fig, wspace=0.15,
-                      left=0.04, right=0.98, top=0.92, bottom=0.08)
+        gs = GridSpec(1, 3, figure=fig, wspace=0.08,
+                      left=0.04, right=0.98, top=0.90, bottom=0.06)
 
         titles = ['Visual Enhancement', 'Structural Contours',
                   f'Fused [{self._fus_mode.currentText()} '
@@ -792,12 +792,15 @@ class CPSVisualizer(QMainWindow):
         for i, (title, arr) in enumerate(zip(titles, arrays)):
             ax = fig.add_subplot(gs[0, i])
             ax.set_facecolor(FIG_BG)
-            s, lo, hi = display_scale(arr, 0, 100)
+            arr_disp = _downsample(arr, 200, 200)
+            s, lo, hi = display_scale(arr_disp, 0, 100)
             ax.imshow(s, cmap=ink_colormap(), vmin=lo, vmax=hi,
-                      aspect='equal', interpolation='nearest')
-            ax.set_title(title, fontsize=10)
+                      aspect='auto', interpolation='nearest')
+            ax.set_aspect(_square_aspect(*arr_disp.shape),
+                          adjustable='box', anchor='C')
+            ax.set_title(title, fontsize=9)
             ax.set_xticks([]); ax.set_yticks([])
-        fig.suptitle(f'Fusion: {self._fus_name}', fontsize=12, y=0.97)
+        fig.suptitle(f'Fusion: {self._fus_name}', fontsize=12, y=0.96)
         self._fus_canvas.draw()
 
     # ------------------------------------------------------------------
