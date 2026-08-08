@@ -689,7 +689,8 @@ class CPSVisualizer(QMainWindow):
         bar = QHBoxLayout()
         self._fus_picks = []
         self._fus_color_btns = []
-        default_colors = ['#FF0000', '#00CC00', '#0088FF']
+        # pastel colors
+        default_colors = ['#E07070', '#70C070', '#7090E0']
         for i, (lbl, dc) in enumerate(zip(['A:', 'B:', 'C:'], default_colors)):
             bar.addWidget(QLabel(lbl))
             pb = QComboBox()
@@ -744,7 +745,7 @@ class CPSVisualizer(QMainWindow):
         self._fus_colors = []
         for btn in self._fus_color_btns:
             m = re.search(r'#[0-9a-fA-F]{6}', btn.styleSheet())
-            self._fus_colors.append(m.group() if m else '#FF0000')
+            self._fus_colors.append(m.group() if m else '#E07070')
         self._fus_rows = []
         for i in range(3):
             nm = self._fus_picks[i].currentText()
@@ -755,7 +756,6 @@ class CPSVisualizer(QMainWindow):
             raw = np.nan_to_num(data.astype(float), nan=0, posinf=0, neginf=0)
             V = log_transform(raw)
             V = (V - V.min()) / (V.max() - V.min() + 1e-10)
-            # Otsu binarization + contours on downsampled data
             from skimage.filters import threshold_otsu
             from skimage.measure import find_contours
             from scipy.ndimage import gaussian_filter as gf
@@ -764,7 +764,6 @@ class CPSVisualizer(QMainWindow):
             binary = (ds_small > thresh).astype(np.float64)
             binary_sm = gf(binary, sigma=1.5)
             contours = find_contours(binary_sm, level=0.5)
-            # structural edges
             d2 = gaussian_filter(raw, sigma=1.0)
             E = np.hypot(sobel(d2, axis=0), sobel(d2, axis=1))
             E = (E - E.min()) / (E.max() - E.min() + 1e-10)
@@ -815,14 +814,15 @@ class CPSVisualizer(QMainWindow):
         except Exception: fdim = 0.0
         return cx, cy, fdim
     @staticmethod
-    def _tinted_cmap(hex_color, name='cps_fus'):
+    def _soft_cmap(hex_color, name='cps_fus'):
         from matplotlib.colors import LinearSegmentedColormap, to_rgba
         r, g, b, _ = to_rgba(hex_color)
+        # very subtle tint: max alpha ~0.35
         cdict = {
-            'red':   [(0, r, r), (1, r, r)],
-            'green': [(0, g, g), (1, g, g)],
-            'blue':  [(0, b, b), (1, b, b)],
-            'alpha': [(0, 0, 0), (0.05, 0, 0), (0.15, 0.3, 0.3), (1, 1, 1)],
+            'red':   [(0, 1, 1), (1, r, r)],
+            'green': [(0, 1, 1), (1, g, g)],
+            'blue':  [(0, 1, 1), (1, b, b)],
+            'alpha': [(0, 0, 0), (0.02, 0, 0), (0.15, 0.08, 0.08), (1, 0.35, 0.35)],
         }
         cmap = LinearSegmentedColormap(name, cdict, N=256)
         cmap.set_under((0, 0, 0, 0))
@@ -838,20 +838,9 @@ class CPSVisualizer(QMainWindow):
                       left=0.03, right=0.99, top=0.94, bottom=0.04)
         cols = ['Raw', 'Enhanced+Contour', 'Original+Trace']
         colors = self._fus_colors
-        # RGB overlay
-        scaled_data = []
-        for r in self._fus_rows:
-            s, lo, hi = display_scale(r['raw'], 1, 99)
-            scaled_data.append(np.clip((s - lo) / (hi - lo + 1e-12), 0, 1))
-        mr = min(d.shape[0] for d in scaled_data)
-        mc = min(d.shape[1] for d in scaled_data)
-        overlay = np.zeros((mr, mc, 3))
-        for ch in range(3):
-            if ch < n_rows:
-                overlay[:, :, ch] = scaled_data[ch][:mr, :mc] * 0.85 + 0.08
         for row_i in range(n_rows):
             r = self._fus_rows[row_i]
-            cmap = self._tinted_cmap(colors[row_i])
+            cmap = self._soft_cmap(colors[row_i])
             for col_j in range(3):
                 ax = fig.add_subplot(gs[row_i, col_j])
                 ax.set_facecolor(FIG_BG)
@@ -865,42 +854,57 @@ class CPSVisualizer(QMainWindow):
                     arr_disp = _downsample(s, 180, 180)
                     ax.imshow(arr_disp, cmap=cmap, vmin=lo, vmax=hi,
                               aspect='auto', interpolation='nearest')
-                    scale_x = arr_disp.shape[1] / r['ds_w']
-                    scale_y = arr_disp.shape[0] / r['ds_h']
+                    sx = arr_disp.shape[1] / r['ds_w']
+                    sy = arr_disp.shape[0] / r['ds_h']
                     for cnt in r['contours']:
-                        ax.plot(cnt[:, 1] * scale_x, cnt[:, 0] * scale_y,
-                                color=colors[row_i], linewidth=0.7, alpha=0.7)
+                        ax.plot(cnt[:, 1]*sx, cnt[:, 0]*sy,
+                                color=colors[row_i], linewidth=0.6, alpha=0.65)
                     if len(r['tx']) > 2:
-                        sx = r['tx'] * (arr_disp.shape[1] / r['V'].shape[1])
-                        sy = r['ty'] * (arr_disp.shape[0] / r['V'].shape[0])
-                        ax.plot(sx, sy, color='#FFFFFF', linewidth=0.6, alpha=0.6)
+                        tx_s = r['tx'] * (arr_disp.shape[1] / r['V'].shape[1])
+                        ty_s = r['ty'] * (arr_disp.shape[0] / r['V'].shape[0])
+                        ax.plot(tx_s, ty_s, color='#FFFFFF', linewidth=0.5, alpha=0.5)
                 else:
                     s, lo, hi = display_scale(r['raw'], 1, 99)
                     arr_disp = _downsample(s, 180, 180)
                     ax.imshow(arr_disp, cmap=cmap, vmin=lo, vmax=hi,
                               aspect='auto', interpolation='nearest')
                     if len(r['tx']) > 2:
-                        sx = r['tx'] * (arr_disp.shape[1] / r['V'].shape[1])
-                        sy = r['ty'] * (arr_disp.shape[0] / r['V'].shape[0])
-                        ax.plot(sx, sy, color='#FFFFFF', linewidth=0.6, alpha=0.5)
+                        tx_s = r['tx'] * (arr_disp.shape[1] / r['V'].shape[1])
+                        ty_s = r['ty'] * (arr_disp.shape[0] / r['V'].shape[0])
+                        ax.plot(tx_s, ty_s, color='#FFFFFF', linewidth=0.5, alpha=0.4)
                 ax.set_aspect(_square_aspect(*arr_disp.shape),
                               adjustable='box', anchor='C')
                 ttl = f'{r["name"]}  {cols[col_j]}'
                 if col_j == 1 and r['fd']: ttl += f' (FD={r["fd"]:.3f})'
                 ax.set_title(ttl, fontsize=7)
                 ax.set_xticks([]); ax.set_yticks([])
-        # Overlay
+        # Overlay: contour + trace line synthesis on dark canvas
         ax_ov = fig.add_subplot(gs[:, 3])
-        ax_ov.set_facecolor('#1a1a2e')
-        oh, ow = overlay.shape[:2]
-        z = min(200/oh, 200/ow)
-        ov_disp = _zoom(overlay, (z, z, 1), order=1) if z < 1 else overlay
-        ax_ov.imshow(np.clip(ov_disp, 0, 1), aspect='auto')
-        ax_ov.set_aspect(_square_aspect(*ov_disp.shape[:2]),
+        ax_ov.set_facecolor('#0d0d18')
+        # find common display coord range
+        max_h = max(r['V'].shape[0] for r in self._fus_rows)
+        max_w = max(r['V'].shape[1] for r in self._fus_rows)
+        ax_ov.set_xlim(0, max_w); ax_ov.set_ylim(max_h, 0)
+        for row_i, r in enumerate(self._fus_rows):
+            col = colors[row_i]
+            h, w = r['V'].shape[0], r['V'].shape[1]
+            sx_c = w / r['ds_w']; sy_c = h / r['ds_h']
+            for cnt in r['contours']:
+                ax_ov.plot(cnt[:, 1]*sx_c, cnt[:, 0]*sy_c,
+                           color=col, linewidth=0.7, alpha=0.75)
+            if len(r['tx']) > 2:
+                ax_ov.plot(r['tx'], r['ty'], color=col,
+                           linewidth=0.8, alpha=0.7)
+        ax_ov.set_aspect(_square_aspect(max_h, max_w),
                          adjustable='box', anchor='C')
-        names = [r['name'] for r in self._fus_rows]
-        ax_ov.set_title('+'.join(names), fontsize=8)
+        # FD comparison legend
+        fd_lines = [f'{r["name"]}: FD={r["fd"]:.3f}' for r in self._fus_rows]
+        ax_ov.text(0.02, 0.02, '\n'.join(fd_lines), transform=ax_ov.transAxes,
+                   fontsize=7, color='#AAAAAA', va='bottom', ha='left',
+                   bbox=dict(boxstyle='round,pad=0.3', facecolor='#0d0d18', alpha=0.7))
         ax_ov.set_xticks([]); ax_ov.set_yticks([])
+        names = [r['name'] for r in self._fus_rows]
+        ax_ov.set_title('+'.join(names), fontsize=8, color='#AAAAAA')
         self._fus_canvas.draw()
         self._fus_canvas.draw()
     def _selected_data_indices(self):
