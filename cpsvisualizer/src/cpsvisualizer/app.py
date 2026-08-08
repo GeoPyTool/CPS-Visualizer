@@ -763,16 +763,13 @@ class CPSVisualizer(QMainWindow):
                 else: break
             data = self.df_list[self.df_name_list.index(nm)].to_numpy().copy()
             raw = np.nan_to_num(data.astype(float), nan=0, posinf=0, neginf=0)
+            # middle column: max-contrast visual data + computed overlays
+            # log1p + percentile window spreads full value range evenly,
+            # then contours and trace are drawn on top
+            from cpsvisualizer.core import log_transform
+            V = log_transform(raw)
+            # keep raw01 for otsu contour extraction (needs original shape)
             raw01 = (raw - raw.min()) / (raw.max() - raw.min() + 1e-10)
-            # middle column: multiplicative visual-statistical fusion
-            # F = V^alpha * S^(1-alpha) — pixel only prominent if both
-            # visual AND statistical channels score high
-            from cpsvisualizer.fusion import robust_zscore
-            zs = robust_zscore(raw)
-            zs01 = (zs - zs.min()) / (zs.max() - zs.min() + 1e-10)
-            eps = 1e-10
-            al = self._fus_alpha.value() / 100.0
-            V = (np.maximum(raw01, eps) ** al) * (np.maximum(zs01, eps) ** (1 - al))
             # Otsu contours on downsampled V, then convert to V-space coords
             from skimage.filters import threshold_otsu
             from skimage.measure import find_contours
