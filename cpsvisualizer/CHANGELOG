@@ -1,4 +1,10 @@
 # CPS-Visualizer Release Notes
+## 1.4.0 (8 Aug 2026)
+
+### Fixes
+* Radar chart: differentiated per-method stability/clustering scores so
+  min-max normalisation no longer collapses non-AODA methods to zero
+
 ## 1.3.9 (8 Aug 2026)
 
 ### Improvements

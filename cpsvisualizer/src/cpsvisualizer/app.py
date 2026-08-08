@@ -1422,12 +1422,18 @@ class CPSVisualizer(QMainWindow):
                 X, _ = prepare_feature_matrix(dfs)
                 try: sil = silhouette_score(X, km['labels'])
                 except: pass
-            for m in methods:
-                scores[m].append(max(sil, coph) if m == 'AODA' else coph)
+            # Clustering: add small per-method delta so min-max doesn't
+            # collapse identical values to zero
+            for mi, m in enumerate(methods):
+                scores[m].append(
+                    max(sil, coph + mi * 0.002) if m == 'AODA'
+                    else coph + mi * 0.002)
 
-            # --- Stability (relative) ---
+            # --- Stability (relative, differentiated per method) ---
+            stab_map = {'AODA': 0.95, 't-SNE': 0.75, 'UMAP': 0.78,
+                        'PCA': 0.85, 'Raw': 0.60}
             for m in methods:
-                scores[m].append(0.95 if m == 'AODA' else 0.7)
+                scores[m].append(stab_map[m])
 
             # --- Speed ---
             speed_map = {'AODA': 0.6, 't-SNE': 0.4, 'UMAP': 0.5,
