@@ -1,4 +1,11 @@
 # CPS-Visualizer Release Notes
+## 1.4.1 (8 Aug 2026)
+
+### Fixes
+* Radar chart: epsilon-padded min-max normalisation so the worst method
+  on each axis stays visible instead of collapsing to the centre
+* Default radar scaling changed to Sqrt+MinMax for balanced presentation
+
 ## 1.4.0 (8 Aug 2026)
 
 ### Fixes

@@ -667,6 +667,7 @@ class CPSVisualizer(QMainWindow):
         mode_bar.addWidget(QLabel('Radar axis scaling:'))
         self._radar_mode = QComboBox()
         self._radar_mode.addItems(['Min-Max', 'Z-Score', 'Log+MinMax', 'Sqrt+MinMax'])
+        self._radar_mode.setCurrentText('Sqrt+MinMax')  # balanced default
         self._radar_mode.currentTextChanged.connect(
             lambda _: self._on_analysis_tab_changed(3))
         mode_bar.addWidget(self._radar_mode)
@@ -1470,13 +1471,15 @@ class CPSVisualizer(QMainWindow):
             # store back
             for mi, m in enumerate(methods):
                 scores[m][d] = vals[mi]
-        # min-max normalise each dimension to [0, 1]
+        # min-max normalise each dimension to [0, 1] (with epsilon padding
+        # so the worst method on each axis doesn't collapse to the centre)
+        eps = 0.08
         for d in range(5):
             vals = [scores[m][d] for m in methods]
             vmin, vmax = min(vals), max(vals)
-            if vmax - vmin > 1e-12:
-                for m in methods:
-                    scores[m][d] = (scores[m][d] - vmin) / (vmax - vmin)
+            rng = max(vmax - vmin, 1e-12) + 2 * eps
+            for m in methods:
+                scores[m][d] = (scores[m][d] - vmin + eps) / rng
 
         angles = _np.linspace(0, 2 * _np.pi, len(dims), endpoint=False).tolist()
         angles += angles[:1]
