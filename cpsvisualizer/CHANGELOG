@@ -1,4 +1,9 @@
 # CPS-Visualizer Release Notes
+## 1.2.8 (8 Aug 2026)
+
+### Fixes
+* Distance grid: shifted left so colorbar label is no longer clipped
+
 ## 1.2.7 (8 Aug 2026)
 
 ### Improvements
