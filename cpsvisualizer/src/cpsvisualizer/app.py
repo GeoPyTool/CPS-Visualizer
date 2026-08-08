@@ -700,7 +700,12 @@ class CPSVisualizer(QMainWindow):
         bar.addWidget(QLabel('Res:'))
         self._fus_res=QComboBox(); self._fus_res.addItems(['1x','2x','4x'])
         self._fus_res.currentTextChanged.connect(self._on_fusion_change)
-        bar.addWidget(self._fus_res); bar.addStretch(1)
+        bar.addWidget(self._fus_res)
+        bar.addWidget(QLabel('Base:'))
+        self._fus_base = QComboBox()
+        self._fus_base.currentTextChanged.connect(self._on_fusion_change)
+        bar.addWidget(self._fus_base)
+        bar.addStretch(1)
         v.addLayout(bar)
         self._fus_canvas = FigureCanvas(Figure(figsize=(20,15), dpi=self.dpi))
         _install_figure_export(self._fus_canvas,'cps_fusion')
@@ -725,6 +730,13 @@ class CPSVisualizer(QMainWindow):
             p.blockSignals(False)
         if len(self.df_name_list)>=2 and not self._fus_picks[1].currentText():
             self._fus_picks[1].setCurrentIndex(1)
+        # fill base picker, default to Fe
+        cur_base = self._fus_base.currentText()
+        self._fus_base.blockSignals(True); self._fus_base.clear()
+        self._fus_base.addItems(self.df_name_list)
+        if cur_base in self.df_name_list: self._fus_base.setCurrentText(cur_base)
+        elif 'Fe' in self.df_name_list: self._fus_base.setCurrentText('Fe')
+        self._fus_base.blockSignals(False)
     def _render_fusion(self):
         from cpsvisualizer.core import log_transform
         from scipy.ndimage import sobel,gaussian_filter,zoom
@@ -734,6 +746,53 @@ class CPSVisualizer(QMainWindow):
         for btn in self._fus_color_btns:
             m=re.search(r'#[0-9a-fA-F]{6}',btn.styleSheet())
             self._fus_colors.append(m.group() if m else '#FF3030')
+        # Fe reference contour (clean pyrite crystal boundary)
+        self._fe_contours = []
+        if 'Fe' in self.df_name_list:
+            fe_data = self.df_list[self.df_name_list.index('Fe')].to_numpy().copy()
+            fe_raw = np.nan_to_num(fe_data.astype(float), nan=0, posinf=0, neginf=0)
+            from scipy.ndimage import gaussian_filter as gf
+            from scipy.ndimage import binary_fill_holes, binary_closing, binary_opening
+            from skimage.filters import threshold_otsu
+            from skimage.measure import find_contours, label
+            # heavy smoothing to remove internal texture, keep only boundary
+            fe_sm = gf(fe_raw, sigma=6.0)
+            ds = _downsample(fe_sm, 80, 80)
+            thresh = threshold_otsu(ds)
+            binary = (ds > thresh)
+            # morphological cleanup: close gaps, fill holes
+            binary = binary_closing(binary, structure=np.ones((5, 5)), iterations=2)
+            binary = binary_opening(binary, structure=np.ones((5, 5)), iterations=1)
+            binary = binary_fill_holes(binary)
+            # keep only the largest connected component
+            labeled = label(binary)
+            n = labeled.max()
+            if n > 0:
+                sizes = np.bincount(labeled.ravel())[1:]
+                largest = np.argmax(sizes) + 1
+                binary = (labeled == largest)
+            # smooth the binary once more before contouring
+            binary_f = gf(binary.astype(float), sigma=2.0)
+            scale_x = fe_raw.shape[1] / ds.shape[1]
+            scale_y = fe_raw.shape[0] / ds.shape[0]
+            for cnt in find_contours(binary_f, level=0.5):
+                cx = cnt[:, 1] * scale_x
+                cy = cnt[:, 0] * scale_y
+                self._fe_contours.append(np.column_stack([cx, cy]))
+            self._fe_shape = fe_raw.shape  # before zoom
+            if zf > 1:
+                for c in self._fe_contours:
+                    c[:, 0] *= zf; c[:, 1] *= zf
+                self._fe_shape = (fe_raw.shape[0] * zf, fe_raw.shape[1] * zf)
+        # base element for overlay background
+        base_nm = self._fus_base.currentText()
+        self._fus_base_raw = None
+        if base_nm and base_nm in self.df_name_list:
+            bd = self.df_list[self.df_name_list.index(base_nm)].to_numpy().copy()
+            base_raw = np.nan_to_num(bd.astype(float), nan=0, posinf=0, neginf=0)
+            if zf > 1:
+                base_raw = zoom(base_raw, zf, order=3)
+            self._fus_base_raw = base_raw
         self._fus_rows=[]
         for i in range(3):
             nm=self._fus_picks[i].currentText()
@@ -742,33 +801,15 @@ class CPSVisualizer(QMainWindow):
                 else: break
             data=self.df_list[self.df_name_list.index(nm)].to_numpy().copy()
             raw=np.nan_to_num(data.astype(float),nan=0,posinf=0,neginf=0)
-            # log-transform for contour extraction (better feature detection)
-            log_data=log_transform(raw)
-            from skimage.filters import threshold_otsu
-            from skimage.measure import find_contours
-            from scipy.ndimage import gaussian_filter as gf
-            ds=_downsample(log_data,80,80)
-            thresh=threshold_otsu(ds)
-            binary=(ds>thresh).astype(np.float64)
-            binary_sm=gf(binary,sigma=1.5)
-            contours_ds=find_contours(binary_sm,level=0.5)
-            contours_v=[]
-            V_shape=log_data.shape
-            for cnt in contours_ds:
-                cx=cnt[:,1]*(V_shape[1]/ds.shape[1])
-                cy=cnt[:,0]*(V_shape[0]/ds.shape[0])
-                contours_v.append(np.column_stack([cx,cy]))
             d2=gaussian_filter(raw,sigma=1.0)
             E=np.hypot(sobel(d2,axis=0),sobel(d2,axis=1))
             E=(E-E.min())/(E.max()-E.min()+1e-10)
             tx,ty,fd=self._compute_trajectory(data)
             if zf>1:
-                raw=zoom(raw,zf,order=3); log_data=zoom(log_data,zf,order=3)
-                E=zoom(E,zf,order=3)
-                for c in contours_v: c[:,0]*=zf; c[:,1]*=zf
+                raw=zoom(raw,zf,order=3); E=zoom(E,zf,order=3)
                 tx*=zf; ty*=zf
-            self._fus_rows.append({'name':nm,'raw':raw,'log':log_data,'V_shape':V_shape,
-                'E':E,'tx':tx,'ty':ty,'fd':fd,'contours_v':contours_v})
+            self._fus_rows.append({'name':nm,'raw':raw,'E':E,
+                'tx':tx,'ty':ty,'fd':fd})
         self._render_fusion_display()
     def _compute_trajectory(self,data):
         d=np.nan_to_num(np.asarray(data,dtype=float),nan=0.0,posinf=0.0,neginf=0.0)
@@ -810,57 +851,78 @@ class CPSVisualizer(QMainWindow):
             for col_j in range(3):
                 ax=fig.add_subplot(gs[row_i,col_j]); ax.set_facecolor(FIG_BG)
                 if col_j==0:
-                    # Raw: standard display_scale
                     s,lo,hi=display_scale(r['raw'],1,99)
                     arr_disp=_downsample(s,180,180)
                     ax.imshow(arr_disp,cmap=ink_colormap(),vmin=lo,vmax=hi,
                               aspect='auto',interpolation='nearest')
                 elif col_j==1:
-                    # Enhanced+Contour: subdued bg + bold colored contours
-                    s,lo,hi=display_scale(r['log'],0,100)
+                    # subdued bg + Fe crystal contour + element trace
+                    s,lo,hi=display_scale(r['raw'],0,100)
                     arr_disp=_downsample(s,180,180)
                     ax.imshow(arr_disp,cmap=ink_colormap(),vmin=lo,vmax=hi,
                               aspect='auto',interpolation='nearest',alpha=0.35)
-                    sx=arr_disp.shape[1]/r['V_shape'][1]
-                    sy=arr_disp.shape[0]/r['V_shape'][0]
-                    for cnt in r['contours_v']:
-                        ax.plot(cnt[:,0]*sx,cnt[:,1]*sy,color=col,linewidth=1.2,alpha=0.95)
+                    self._draw_fe_contour(ax,arr_disp)
                     if len(r['tx'])>2:
-                        ax.plot(r['tx']*sx,r['ty']*sy,color='#FFFFFF',linewidth=0.8,alpha=0.7)
+                        sx=arr_disp.shape[1]/r['raw'].shape[1]
+                        sy=arr_disp.shape[0]/r['raw'].shape[0]
+                        ax.plot(r['tx']*sx,r['ty']*sy,color='#FFFFFF',linewidth=0.7,alpha=0.65)
                 else:
-                    # Original+Trace: standard data + bold colored trace
+                    # full data + Fe contour + element trace
                     s,lo,hi=display_scale(r['raw'],1,99)
                     arr_disp=_downsample(s,180,180)
                     ax.imshow(arr_disp,cmap=ink_colormap(),vmin=lo,vmax=hi,
                               aspect='auto',interpolation='nearest')
+                    self._draw_fe_contour(ax,arr_disp)
                     if len(r['tx'])>2:
-                        sx=arr_disp.shape[1]/r['V_shape'][1]
-                        sy=arr_disp.shape[0]/r['V_shape'][0]
-                        ax.plot(r['tx']*sx,r['ty']*sy,color=col,linewidth=1.0,alpha=0.85)
+                        sx=arr_disp.shape[1]/r['raw'].shape[1]
+                        sy=arr_disp.shape[0]/r['raw'].shape[0]
+                        ax.plot(r['tx']*sx,r['ty']*sy,color=col,linewidth=0.8,alpha=0.8)
                 ax.set_aspect(_square_aspect(*arr_disp.shape),adjustable='box',anchor='C')
                 ttl=f'{r["name"]}  {cols[col_j]}'
                 if col_j==1 and r['fd']: ttl+=f' (FD={r["fd"]:.3f})'
                 ax.set_title(ttl,fontsize=7); ax.set_xticks([]); ax.set_yticks([])
-        # Overlay
-        ax_ov=fig.add_subplot(gs[:,3]); ax_ov.set_facecolor('#111118')
-        max_h=max(r['V_shape'][0] for r in self._fus_rows)
-        max_w=max(r['V_shape'][1] for r in self._fus_rows)
-        ax_ov.set_xlim(0,max_w); ax_ov.set_ylim(max_h,0)
-        for row_i,r in enumerate(self._fus_rows):
-            col=self._fus_colors[row_i]
-            for cnt in r['contours_v']:
-                ax_ov.plot(cnt[:,0],cnt[:,1],color=col,linewidth=0.6,alpha=0.7)
-            if len(r['tx'])>2:
-                ax_ov.plot(r['tx'],r['ty'],color=col,linewidth=1.2,alpha=0.9)
-        ax_ov.set_aspect(_square_aspect(max_h,max_w),adjustable='box',anchor='C')
-        fd_lines=[f'{r["name"]}: FD={r["fd"]:.3f}' for r in self._fus_rows]
-        ax_ov.text(0.02,0.02,'\n'.join(fd_lines),transform=ax_ov.transAxes,
-                   fontsize=7,color='#AAAAAA',va='bottom',ha='left',
-                   bbox=dict(boxstyle='round,pad=0.3',facecolor='#111118',alpha=0.7))
+        # Overlay: base element data as background + colored traces on top
+        ax_ov=fig.add_subplot(gs[:,3]); ax_ov.set_facecolor(FIG_BG)
+        if self._fus_base_raw is not None:
+            s, lo, hi = display_scale(self._fus_base_raw, 1, 99)
+            arr_ov = _downsample(s, 180, 180)
+            ax_ov.imshow(arr_ov, cmap=ink_colormap(), vmin=lo, vmax=hi,
+                         aspect='auto', interpolation='nearest', alpha=0.8)
+            max_h = arr_ov.shape[0]; max_w = arr_ov.shape[1]
+            sx_ov = arr_ov.shape[1] / self._fus_base_raw.shape[1]
+            sy_ov = arr_ov.shape[0] / self._fus_base_raw.shape[0]
+        else:
+            max_h = max(r['raw'].shape[0] for r in self._fus_rows)
+            max_w = max(r['raw'].shape[1] for r in self._fus_rows)
+            sx_ov = sy_ov = 1.0
+        # Fe crystal boundary
+        if self._fe_contours:
+            for cnt in self._fe_contours:
+                ax_ov.plot(cnt[:,0]*sx_ov, cnt[:,1]*sy_ov,
+                           color='#FFFFFF', linewidth=0.6, alpha=0.45)
+        # element traces
+        for row_i, r in enumerate(self._fus_rows):
+            col = self._fus_colors[row_i]
+            if len(r['tx']) > 2:
+                ax_ov.plot(r['tx']*sx_ov, r['ty']*sy_ov,
+                           color=col, linewidth=1.0, alpha=0.85)
+        ax_ov.set_aspect(_square_aspect(max_h, max_w),
+                         adjustable='box', anchor='C')
+        fd_lines = [f'{r["name"]}: FD={r["fd"]:.3f}' for r in self._fus_rows]
+        ax_ov.text(0.02, 0.98, '\n'.join(fd_lines), transform=ax_ov.transAxes,
+                   fontsize=7, color='#333333', va='top', ha='left',
+                   bbox=dict(boxstyle='round,pad=0.3', facecolor='#FFFFFF', alpha=0.6))
         ax_ov.set_xticks([]); ax_ov.set_yticks([])
-        names=[r['name'] for r in self._fus_rows]
-        ax_ov.set_title('+'.join(names),fontsize=8,color='#AAAAAA')
+        names = [r['name'] for r in self._fus_rows]
+        ax_ov.set_title('+'.join(names), fontsize=8)
         self._fus_canvas.draw()
+    def _draw_fe_contour(self, ax, arr_disp):
+        if not self._fe_contours: return
+        sx=arr_disp.shape[1]/self._fe_shape[1]
+        sy=arr_disp.shape[0]/self._fe_shape[0]
+        for cnt in self._fe_contours:
+            ax.plot(cnt[:,0]*sx,cnt[:,1]*sy,color='#FFFFFF',
+                    linewidth=1.0,alpha=0.8)
         self._fus_canvas.draw()
     def _selected_data_indices(self):
         return [self.df_name_list.index(it.text())
