@@ -15,7 +15,7 @@ except Exception:
 
 setup(
     name='cpsvisualizer',
-    version='1.2.9',
+    version='1.3.0',
     description='CPS-Visualizer: Visualization, similarity measurement, and statistical analysis of LA-ICP-MS surface scan data.',
     long_description=README,
     long_description_content_type='text/markdown',

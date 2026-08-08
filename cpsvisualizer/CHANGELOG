@@ -1,4 +1,10 @@
 # CPS-Visualizer Release Notes
+## 1.3.0 (8 Aug 2026)
+
+### Fixes
+* Statistics pane: two square plots now side-by-side (horizontal) instead
+  of stacked vertically
+
 ## 1.2.9 (8 Aug 2026)
 
 ### Improvements

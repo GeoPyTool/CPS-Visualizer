@@ -535,15 +535,14 @@ class CPSVisualizer(QMainWindow):
 
     def _build_stats_pane(self, parent):
         sc, inner = self._scroll_pane()
-        v = QVBoxLayout(inner)
+        h = QHBoxLayout(inner)
         self._pca_canvas = FigureCanvas(Figure(figsize=(6, 6), dpi=self.dpi))
         self._corr_canvas = FigureCanvas(Figure(figsize=(6, 6), dpi=self.dpi))
         for c in (self._pca_canvas, self._corr_canvas):
             c.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-            c.setMinimumHeight(350)
-        v.addWidget(self._pca_canvas)
-        v.addWidget(self._corr_canvas)
-        v.addStretch(1)
+            c.setMinimumHeight(400)
+        h.addWidget(self._pca_canvas)
+        h.addWidget(self._corr_canvas)
         parent.addTab(sc, 'Statistics')
 
     def _build_comparison_pane(self, parent):
